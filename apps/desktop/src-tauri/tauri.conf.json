@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Polyglot Live Translator",
+  "version": "0.1.0",
+  "identifier": "com.bakele.polyglotlive",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{ "title": "Polyglot Live Translator", "width": 1180, "height": 760, "minWidth": 900, "minHeight": 620 }],
+    "security": { "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:*" }
+  },
+  "bundle": { "active": true, "targets": ["msi", "nsis"] }
+}

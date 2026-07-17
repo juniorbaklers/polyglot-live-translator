@@ -1,0 +1,21 @@
+const state = document.querySelector<HTMLDivElement>("#state")!;
+const capture = document.querySelector<HTMLButtonElement>("#capture")!;
+const pair = document.querySelector<HTMLButtonElement>("#pair")!;
+let capturing = false;
+
+pair.addEventListener("click", async () => {
+  const code = document.querySelector<HTMLInputElement>("#code")!.value.trim();
+  if (!/^\d{6}$/.test(code)) { state.textContent = "Saisissez le code à 6 chiffres."; return; }
+  await chrome.storage.local.set({ pairingCode: code });
+  state.textContent = "Code enregistré — connexion locale en attente";
+});
+
+capture.addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab.id) { state.textContent = "Onglet actif introuvable."; return; }
+  capturing = !capturing;
+  await chrome.runtime.sendMessage({ type: capturing ? "capture.start" : "capture.stop", tabId: tab.id });
+  capture.textContent = capturing ? "Arrêter la capture" : "Capturer le son de cet onglet";
+  capture.classList.toggle("stop", capturing);
+  state.textContent = capturing ? "● Capture en cours" : "Capture interrompue";
+});
