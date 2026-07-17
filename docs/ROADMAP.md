@@ -7,12 +7,16 @@
 - Extension Manifest V3 initiale
 - Contrats partagés et protocole d'association
 
-## Lot 2 — Capture audio Windows
+## Lot 2 — Capture audio Windows (implémenté)
 
 - Microphone
 - WASAPI Loopback
 - Sélection des périphériques
 - Jauge, test audio, absence de signal
+
+Le moteur natif utilise Windows Core Audio en mode partagé. Le son système est
+capturé avec `AUDCLNT_STREAMFLAGS_LOOPBACK`; le microphone utilise le point de
+capture par défaut. La jauge RMS/Peak est renvoyée à React toutes les 100 ms.
 
 ## Lot 3 — Capture d'onglet
 
