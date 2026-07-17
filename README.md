@@ -10,7 +10,7 @@ Chrome et Microsoft Edge.
 - `packages/shared` : contrats de messages partagés.
 - `docs` : architecture, sécurité et étapes de réalisation.
 
-## Lot 1 livré
+## Lots livrés
 
 - monorepo TypeScript ;
 - interface Windows initiale en français ;
@@ -18,6 +18,14 @@ Chrome et Microsoft Edge.
 - protocole local de connexion et d'association ;
 - contrats de messages partagés ;
 - architecture prête pour SQLite, la capture audio et les moteurs IA.
+
+### Lot 2 — Audio Windows
+
+- capture du son système avec WASAPI Loopback ;
+- capture du microphone ;
+- commandes Tauri de démarrage et d'arrêt ;
+- jauge audio en temps réel et détection d'absence de signal ;
+- messages d'erreur en français.
 
 ## Démarrage en développement
 
@@ -38,6 +46,6 @@ pnpm build:extension
 Chargez ensuite le dossier `apps/extension/dist` comme extension non empaquetée
 dans `chrome://extensions` ou `edge://extensions`.
 
-> Ce lot est le socle technique. La capture WASAPI, le traitement IA réel et
-> les exports seront intégrés dans les lots suivants décrits dans
-> `docs/ROADMAP.md`.
+> Le moteur audio du Lot 2 doit être compilé et validé sur Windows 10/11. Le
+> traitement IA réel et les exports seront intégrés dans les lots suivants
+> décrits dans `docs/ROADMAP.md`.
