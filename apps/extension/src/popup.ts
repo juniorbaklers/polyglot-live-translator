@@ -14,7 +14,11 @@ capture.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab.id) { state.textContent = "Onglet actif introuvable."; return; }
   capturing = !capturing;
-  await chrome.runtime.sendMessage({ type: capturing ? "capture.start" : "capture.stop", tabId: tab.id });
+  const sourceLanguage = document.querySelector<HTMLSelectElement>("#source")!.value;
+  const targetLanguage = document.querySelector<HTMLSelectElement>("#target")!.value;
+  await chrome.storage.local.set({ sourceLanguage, targetLanguage });
+  const response = await chrome.runtime.sendMessage({ type: capturing ? "capture.start" : "capture.stop", tabId: tab.id });
+  if (response && !response.ok) { capturing = false; state.textContent = response.error ?? "La capture n’a pas démarré"; return; }
   capture.textContent = capturing ? "Arrêter la capture" : "Capturer le son de cet onglet";
   capture.classList.toggle("stop", capturing);
   state.textContent = capturing ? "● Capture en cours" : "Capture interrompue";

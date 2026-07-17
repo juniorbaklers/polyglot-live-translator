@@ -26,3 +26,5 @@ export type ServerMessage =
   | { type: "state"; state: CaptureState; detail?: string }
   | { type: "subtitle"; sequence: number; original: string; translation: string; final: boolean }
   | { type: "error"; code: string; message: string; action?: string };
+
+export const LOCAL_WEBSOCKET_PORT = 47832;

@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { audioApi, type AudioDevice, type AudioMeter, type CaptureSource } from "./audio";
+import { invoke } from "@tauri-apps/api/core";
+import "./extra.css";
+import { AcademicFeatures } from "./AcademicFeatures";
+import { Onboarding } from "./Onboarding";
 
 const menu = [
   ["CONFIGURATION", "Compte", "Entrée audio", "Langues"],
@@ -14,13 +18,50 @@ export function App() {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
   const [meter, setMeter] = useState<AudioMeter>({ active: false, level: 0, peak: 0, signalDetected: false, elapsedMs: 0 });
   const [audioMessage, setAudioMessage] = useState("Prêt à tester le son");
-  const pairingCode = useMemo(() => String(Math.floor(100000 + Math.random() * 900000)), []);
+  const fallbackPairingCode = useMemo(() => String(Math.floor(100000 + Math.random() * 900000)), []);
+  const [pairingCode, setPairingCode] = useState(fallbackPairingCode);
+  const [browserStatus, setBrowserStatus] = useState("Extension non connectée");
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyReady, setApiKeyReady] = useState(false);
+  const [sessions, setSessions] = useState<Array<{ id: number; title: string; segmentCount: number }>>([]);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     audioApi.listDevices().then(setDevices).catch(() => setDevices([
       { id: "default-render", label: "Sortie Windows par défaut", kind: "output", isDefault: true },
       { id: "default-capture", label: "Microphone Windows par défaut", kind: "input", isDefault: true }
     ]));
+  }, []);
+
+  useEffect(() => {
+    invoke<boolean>("has_api_key").then(setApiKeyReady).catch(() => undefined);
+    invoke<boolean>("get_demo_mode").then(setDemoMode).catch(() => undefined);
+    invoke<Array<{ id: number; title: string; segmentCount: number }>>("list_sessions").then(setSessions).catch(() => undefined);
+  }, []);
+
+  async function storeApiKey() {
+    try { await invoke("save_api_key", { value: apiKey }); setApiKey(""); setApiKeyReady(true); }
+    catch (error) { setAudioMessage(String(error)); }
+  }
+
+  async function toggleDemoMode() {
+    const enabled = !demoMode;
+    await invoke("set_demo_mode", { enabled });
+    setDemoMode(enabled);
+  }
+
+  useEffect(() => {
+    invoke<string>("get_pairing_code").then(setPairingCode).catch(() => undefined);
+    const timer = window.setInterval(() => {
+      invoke<{ connected: boolean; capturing: boolean; chunksReceived: number }>("get_browser_capture_status")
+        .then((status) => setBrowserStatus(
+          status.capturing
+            ? `Capture navigateur en cours — ${status.chunksReceived} segments reçus`
+            : status.connected ? "Extension connectée" : "Extension non connectée"
+        ))
+        .catch(() => undefined);
+    }, 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -35,6 +76,16 @@ export function App() {
     }, 100);
     return () => window.clearInterval(timer);
   }, [running]);
+
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || !event.shiftKey) return;
+      if (event.code === "KeyH") { event.preventDefault(); invoke("open_subtitle_window"); }
+      if (event.code === "Space") { event.preventDefault(); toggleCapture(); }
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  });
 
   async function toggleCapture() {
     try {
@@ -55,6 +106,7 @@ export function App() {
   }
 
   return <div className="shell">
+    <Onboarding />
     <aside>
       <div className="brand"><span>PL</span><b>Polyglot Live</b></div>
       {menu.map(([title, ...items]) => <section key={title}>
@@ -81,7 +133,15 @@ export function App() {
         <div className="meter" role="meter" aria-valuenow={Math.round(meter.level * 100)} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${Math.min(100, meter.level * 180)}%` }} /></div>
         <div className="meter-scale"><span>Silence</span><span>{Math.round(meter.level * 100)} %</span><span>Fort</span></div>
       </section>
-      <section className="pairing"><div><h2>Association de l’extension</h2><p>Saisissez ce code dans l’extension. Il est temporaire et à usage unique.</p></div><code>{pairingCode}</code></section>
+      <section className="pairing"><div><h2>Association de l’extension</h2><p>{browserStatus}. Saisissez ce code dans l’extension.</p></div><code>{pairingCode}</code></section>
+      <button className="floating-subtitle-button" onClick={() => invoke("open_subtitle_window")}>Ouvrir la fenêtre flottante de sous-titres</button>
+      <section className="security-panel">
+        <div><h2>Service de transcription</h2><p>{apiKeyReady ? "Clé protégée dans le coffre Windows" : "Ajoutez votre clé uniquement ici — jamais dans GitHub"}</p></div>
+        {!apiKeyReady && <><input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Clé API" autoComplete="off"/><button onClick={storeApiKey}>Enregistrer en sécurité</button></>}
+        <button className={demoMode ? "demo-active" : ""} onClick={toggleDemoMode}>{demoMode ? "Mode démo actif" : "Activer la démo"}</button>
+      </section>
+      <section className="sessions-panel"><h2>Transcriptions récentes</h2>{sessions.length ? sessions.slice(0,5).map((session) => <div key={session.id}><span>{session.title}</span><strong>{session.segmentCount} segments</strong></div>) : <p>Aucune transcription enregistrée.</p>}</section>
+      <AcademicFeatures />
       <section className="controls">
         <select aria-label="Langue source"><option>Détection automatique</option><option>Français</option><option>Anglais</option></select>
         <span>→</span>
