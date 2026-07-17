@@ -1,0 +1,12 @@
+{
+  "name": "polyglot-live-translator",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev:desktop": "pnpm --filter @polyglot/desktop tauri dev",
+    "build:desktop": "pnpm --filter @polyglot/desktop tauri build",
+    "build:extension": "pnpm --filter @polyglot/extension build",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
