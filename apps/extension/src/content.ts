@@ -1,5 +1,7 @@
+// Script injecté dans la page pour afficher une incrustation de sous-titres déplaçable.
 const ID = "polyglot-live-subtitles";
 
+// Crée l'incrustation une seule fois, puis réutilise l'élément existant.
 function ensureOverlay() {
   let overlay = document.getElementById(ID);
   if (overlay) return overlay;
@@ -17,6 +19,7 @@ function ensureOverlay() {
   return overlay;
 }
 
+// Affiche un état technique lorsque la traduction n'est pas encore disponible.
 function showState(text: string) {
   const overlay = ensureOverlay();
   const original = overlay.querySelector<HTMLElement>('[data-role="original"]')!;
@@ -25,6 +28,7 @@ function showState(text: string) {
   translation.textContent = text;
 }
 
+// Place le texte entendu et sa traduction dans deux zones distinctes.
 function showSubtitle(originalText: string, translatedText: string) {
   const overlay = ensureOverlay();
   const original = overlay.querySelector<HTMLElement>('[data-role="original"]')!;
@@ -35,6 +39,7 @@ function showSubtitle(originalText: string, translatedText: string) {
   Object.assign(translation.style, { fontSize: "22px", color: "#ffffff", marginTop: "4px" });
 }
 
+// Calcule la position de la souris afin de rendre la fenêtre déplaçable.
 function makeDraggable(element: HTMLElement, handle: HTMLElement) {
   let offsetX = 0, offsetY = 0, dragging = false;
   handle.addEventListener("mousedown", (event) => {
@@ -52,6 +57,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
   document.addEventListener("mouseup", () => { dragging = false; });
 }
 
+// Réagit aux messages envoyés par le service worker de l'extension.
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "overlay.show") showState(message.text);
   if (message.type === "overlay.subtitle") showSubtitle(message.original, message.translation);

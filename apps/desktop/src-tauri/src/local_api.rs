@@ -1,3 +1,5 @@
+//! Serveur WebSocket local reliant l'extension navigateur à l'application Windows.
+//! L'association par code et jeton empêche un client non autorisé d'envoyer de l'audio.
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -60,6 +62,7 @@ impl PairingState {
     }
 }
 
+/// Écoute uniquement l'adresse locale afin de ne jamais exposer le service sur Internet.
 pub async fn run(state: PairingState) {
     let listener = match TcpListener::bind(LOCAL_WS_ADDRESS).await {
         Ok(listener) => listener,
@@ -82,6 +85,7 @@ pub async fn run(state: PairingState) {
     }
 }
 
+// Traite une connexion, vérifie son association puis distribue ses messages JSON.
 async fn handle_connection(stream: TcpStream, state: PairingState) -> Result<(), String> {
     let mut socket = accept_async(stream).await.map_err(|error| format!("Connexion WebSocket refusée : {error}"))?;
     while let Some(message) = socket.next().await {

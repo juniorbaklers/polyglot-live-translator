@@ -1,8 +1,10 @@
+// Contrôleur du popup : association avec Windows et démarrage de la capture d'onglet.
 const state = document.querySelector<HTMLDivElement>("#state")!;
 const capture = document.querySelector<HTMLButtonElement>("#capture")!;
 const pair = document.querySelector<HTMLButtonElement>("#pair")!;
 let capturing = false;
 
+// Vérifie que le code contient exactement six chiffres avant de le mémoriser localement.
 pair.addEventListener("click", async () => {
   const code = document.querySelector<HTMLInputElement>("#code")!.value.trim();
   if (!/^\d{6}$/.test(code)) { state.textContent = "Saisissez le code à 6 chiffres."; return; }
@@ -10,6 +12,7 @@ pair.addEventListener("click", async () => {
   state.textContent = "Code enregistré — connexion locale en attente";
 });
 
+// Démarre ou arrête la capture de l'onglet actif et actualise l'interface.
 capture.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab.id) { state.textContent = "Onglet actif introuvable."; return; }

@@ -1,5 +1,7 @@
+// Service worker central : coordonne le popup, la capture audio et les sous-titres.
 const OFFSCREEN_PATH = "offscreen.html";
 
+// Crée le document invisible seulement s'il n'existe pas déjà.
 async function ensureOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL(OFFSCREEN_PATH);
   const contexts = await new Promise<chrome.runtime.ExtensionContext[]>((resolve) => {
@@ -16,6 +18,7 @@ async function ensureOffscreenDocument() {
   });
 }
 
+// Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "capture.start") {
     (async () => {

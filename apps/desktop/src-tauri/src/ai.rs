@@ -1,3 +1,5 @@
+//! Pipeline d'intelligence artificielle : transcription audio, traduction et mode démo.
+//! Les appels distants sont isolés ici afin de garder l'interface indépendante du fournisseur.
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

@@ -1,3 +1,4 @@
+//! Persistance locale SQLite des sessions, segments et glossaires, avec exports pédagogiques.
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::path::Path;
@@ -35,6 +36,7 @@ pub struct TranscriptSegment {
 }
 
 impl SessionStore {
+    /// Ouvre la base et crée automatiquement les tables et index manquants.
     pub fn open(path: &Path) -> Result<Self, String> {
         if let Some(parent) = path.parent() { std::fs::create_dir_all(parent).map_err(|error| error.to_string())?; }
         let connection = Connection::open(path).map_err(|error| format!("Ouverture SQLite impossible : {error}"))?;
@@ -47,6 +49,7 @@ impl SessionStore {
         Ok(Self { connection: Arc::new(Mutex::new(connection)), active_session: Arc::new(Mutex::new(None)) })
     }
 
+    /// Crée une nouvelle session et la marque comme session active.
     pub fn start(&self, source: &str, target: &str) -> Result<i64, String> {
         let created_at = now_ms();
         let title = format!("Traduction du {}", created_at);
@@ -57,6 +60,7 @@ impl SessionStore {
         Ok(id)
     }
 
+    /// Ajoute un couple texte original/traduction à la session active.
     pub fn add_segment(&self, sequence: i64, original: &str, translation: &str, source: &str, target: &str) -> Result<(), String> {
         let current = { *self.active_session.lock().map_err(|_| "Session indisponible")? };
         let session_id = match current { Some(id) => id, None => self.start(source, target)? };
@@ -69,6 +73,7 @@ impl SessionStore {
 
     pub fn stop(&self) { if let Ok(mut active) = self.active_session.lock() { *active = None; } }
 
+    /// Retourne l'historique résumé, du plus récent au plus ancien.
     pub fn sessions(&self) -> Result<Vec<SessionSummary>, String> {
         let connection = self.connection.lock().map_err(|_| "Base SQLite indisponible")?;
         let mut statement = connection.prepare("SELECT s.id,s.title,s.created_at,s.source_language,s.target_language,COUNT(g.id) FROM sessions s LEFT JOIN segments g ON g.session_id=s.id GROUP BY s.id ORDER BY s.created_at DESC").map_err(|error| error.to_string())?;
@@ -81,6 +86,7 @@ impl SessionStore {
         statement.query_map([session_id], |row| Ok(TranscriptSegment { sequence: row.get(0)?, timestamp_ms: row.get(1)?, original: row.get(2)?, translation: row.get(3)? })).map_err(|error| error.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|error| error.to_string())
     }
 
+    /// Exporte une session dans le format choisi par l'utilisateur.
     pub fn export(&self, session_id: i64, format: &str, path: &Path) -> Result<(), String> {
         let segments = self.segments(session_id)?;
         let normalized = format.to_ascii_lowercase();

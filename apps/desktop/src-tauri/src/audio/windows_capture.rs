@@ -1,3 +1,4 @@
+//! Implémentation Windows WASAPI pour le microphone et le son système en loopback.
 use super::{update_meter, AudioDevice, AudioMeter, CaptureSource, POLL_INTERVAL};
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex};
 use std::time::Instant;
@@ -17,6 +18,7 @@ impl Drop for ComGuard {
     fn drop(&mut self) { unsafe { CoUninitialize() } }
 }
 
+// Initialise COM pour le thread courant, prérequis des API audio Windows.
 fn initialize_com() -> Result<ComGuard, String> {
     unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }
         .ok()
@@ -49,6 +51,7 @@ pub fn default_devices() -> Result<Vec<AudioDevice>, String> {
     ])
 }
 
+/// Capture le périphérique par défaut jusqu'à la réception du signal d'arrêt.
 pub fn capture_default(
     source: CaptureSource,
     stop: &Arc<AtomicBool>,
@@ -114,6 +117,7 @@ pub fn capture_default(
     Ok(())
 }
 
+// Convertit les échantillons PCM en niveau moyen et pic normalisés entre 0 et 1.
 fn calculate_level(bytes: &[u8], bits_per_sample: u16) -> (f32, f32) {
     let samples: Vec<f32> = match bits_per_sample {
         16 => bytes.chunks_exact(2).map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32).collect(),

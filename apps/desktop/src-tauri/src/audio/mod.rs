@@ -1,3 +1,4 @@
+//! Abstraction du moteur audio : cycle de capture, état partagé et mesure du volume.
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -57,6 +58,7 @@ pub struct AudioEngine {
 }
 
 impl AudioEngine {
+    /// Lance un thread de capture pour la source choisie et empêche un double démarrage.
     pub fn start(&self, source: CaptureSource) -> Result<(), String> {
         self.stop()?;
         self.stop.store(false, Ordering::SeqCst);
@@ -89,6 +91,7 @@ impl AudioEngine {
         Ok(())
     }
 
+    /// Demande l'arrêt puis attend la fin propre du thread audio.
     pub fn stop(&self) -> Result<(), String> {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(worker) = self.worker.lock().map_err(|_| "Moteur audio indisponible")?.take() {

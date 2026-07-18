@@ -1,3 +1,4 @@
+// Configuration de compilation des quatre points d'entrée de l'extension navigateur.
 import { defineConfig } from "vite";
 import { resolve } from "node:path";
 

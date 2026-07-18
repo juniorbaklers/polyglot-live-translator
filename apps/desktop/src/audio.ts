@@ -1,7 +1,9 @@
+// Façade TypeScript des commandes audio natives exposées par Tauri/Rust.
 import { invoke } from "@tauri-apps/api/core";
 
 export type CaptureSource = "microphone" | "system-audio";
 
+// Description normalisée d'un périphérique détecté sur Windows.
 export interface AudioDevice {
   id: string;
   label: string;
@@ -9,6 +11,7 @@ export interface AudioDevice {
   isDefault: boolean;
 }
 
+// Mesures renvoyées en direct pour alimenter la jauge de volume.
 export interface AudioMeter {
   active: boolean;
   level: number;
@@ -18,6 +21,7 @@ export interface AudioMeter {
   error?: string | null;
 }
 
+// Point d'accès unique utilisé par React pour dialoguer avec le moteur audio natif.
 export const audioApi = {
   listDevices: () => invoke<AudioDevice[]>("list_audio_devices"),
   start: (source: CaptureSource) => invoke<void>("start_audio_capture", { source }),

@@ -1,9 +1,12 @@
+// Centre de démonstration académique présenté au jury.
+// Les simulations sont signalées afin de ne pas les confondre avec des services commerciaux.
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import QRCode from "qrcode";
 import "./academic.css";
 
+// Identifiants internes des huit onglets fonctionnels.
 type Tab = "audio"|"languages"|"voice"|"share"|"transcripts"|"glossary"|"account"|"admin";
 interface Session { id:number; title:string; sourceLanguage:string; targetLanguage:string; segmentCount:number }
 interface Glossary { source:string; translation:string; domain:string }
@@ -11,6 +14,7 @@ interface Glossary { source:string; translation:string; domain:string }
 const languages = ["Français","Anglais","Espagnol","Portugais","Allemand","Italien","Arabe","Russe","Chinois","Japonais","Coréen","Turc","Grec","Baoulé (en ligne)","Dioula (en ligne)"];
 
 export function AcademicFeatures() {
+  // États locaux qui rendent les différents scénarios de démonstration interactifs.
   const [tab,setTab]=useState<Tab>("audio");
   const [targets,setTargets]=useState(["Français"]);
   const [offline,setOffline]=useState<string[]>([]);
@@ -24,18 +28,24 @@ export function AcademicFeatures() {
   const [newTerm,setNewTerm]=useState({source:"",translation:"",domain:"Géomatique"});
   const [quota,setQuota]=useState(118);
 
+  // Charge l'historique et le glossaire, puis prépare le QR code de partage local.
   useEffect(()=>{invoke<Session[]>("list_sessions").then(setSessions).catch(()=>undefined);invoke<Glossary[]>("list_glossary").then(setGlossary).catch(()=>undefined)},[]);
   useEffect(()=>{QRCode.toDataURL(`http://127.0.0.1:47832/session/${shareCode}`,{width:180,margin:1}).then(setQr)},[shareCode]);
   const filtered=useMemo(()=>sessions.filter(s=>s.title.toLowerCase().includes(search.toLowerCase())),[sessions,search]);
 
+  // Transmet un média importé au backend après conversion en Base64.
   async function importFile(file?:File){
     if(!file)return; setFileName(file.name); setMessage("Traitement du fichier…");
     const data=await fileToBase64(file);
     try{const result=await invoke<{original:string;translation:string}>("process_imported_media",{data,mimeType:file.type||"audio/webm",sourceLanguage:"auto",targetLanguage:"fr"});setMessage(`${result.original} → ${result.translation}`)}catch(error){setMessage(String(error))}
   }
+  // Démonstration de la synthèse vocale intégrée au système.
   function speak(){const utterance=new SpeechSynthesisUtterance("Bienvenue dans Polyglot Live Translator. La synthèse vocale est opérationnelle.");utterance.lang="fr-FR";utterance.rate=1;speechSynthesis.cancel();speechSynthesis.speak(utterance)}
+  // Ajoute ou retire une langue de la sélection multiple.
   function toggleTarget(language:string){setTargets(current=>current.includes(language)?current.filter(item=>item!==language):[...current,language])}
+  // Simule le téléchargement d'un modèle hors ligne pour la présentation académique.
   function downloadModel(language:string){setMessage(`Téléchargement simulé du modèle ${language}…`);setTimeout(()=>{setOffline(current=>[...new Set([...current,language])]);setMessage(`Modèle ${language} disponible hors ligne`)},900)}
+  // Enregistre un terme métier dans le glossaire local.
   async function addTerm(){if(!newTerm.source||!newTerm.translation)return;await invoke("upsert_glossary",{entry:newTerm});setGlossary(await invoke("list_glossary"));setNewTerm({source:"",translation:"",domain:"Géomatique"})}
 
   return <section className="academic">
@@ -54,8 +64,11 @@ export function AcademicFeatures() {
   </section>
 }
 
+// Composants visuels simples réutilisés dans les différents onglets.
 function Panel({title,children}:{title:string;children:ReactNode}){return <div className="panel"><h3>{title}</h3>{children}</div>}
 function Check({text}:{text:string}){return <label className="check"><input type="checkbox" defaultChecked/><span>{text}</span></label>}
 function Metric({name,value}:{name:string;value:string}){return <div className="metric"><span>{name}</span><strong>{value}</strong></div>}
+// Traduit l'identifiant technique d'un onglet en libellé lisible.
 function label(tab:Tab){return({audio:"Audio avancé",languages:"Langues",voice:"Voix",share:"Partage",transcripts:"Transcriptions",glossary:"Terminologie",account:"Compte",admin:"Administration"})[tab]}
+// Lit un fichier et retire le préfixe Data URL pour ne conserver que son contenu Base64.
 function fileToBase64(file:File){return new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]||"");reader.onerror=()=>reject(reader.error);reader.readAsDataURL(file)})}

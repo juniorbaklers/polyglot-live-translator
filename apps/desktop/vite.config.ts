@@ -1,3 +1,4 @@
+// Configuration de compilation de l'interface principale et de la fenêtre de sous-titres.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";

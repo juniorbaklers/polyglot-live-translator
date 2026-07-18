@@ -1,6 +1,8 @@
+// Assistant de première utilisation, affiché jusqu'à sa validation sur cet ordinateur.
 import { useEffect, useState } from "react";
 import "./onboarding.css";
 
+// Contenu pédagogique présenté successivement à l'utilisateur.
 const steps=[
   ["Bienvenue","Configurez Polyglot Live Translator en quelques étapes."],
   ["Langue de l’interface","Français est sélectionné par défaut."],
@@ -13,6 +15,7 @@ const steps=[
 ];
 
 export function Onboarding(){
+  // L'étape active détermine le texte et la progression affichés.
   const [open,setOpen]=useState(false);const [step,setStep]=useState(0);
   useEffect(()=>{if(!localStorage.getItem("polyglot-onboarding-complete"))setOpen(true)},[]);
   if(!open)return <button className="restart-wizard" onClick={()=>{setStep(0);setOpen(true)}}>Assistant de configuration</button>;

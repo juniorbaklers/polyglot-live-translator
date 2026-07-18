@@ -1,3 +1,4 @@
+//! Point d'assemblage du backend Tauri : commandes React, services et état partagé.
 use rand::Rng;
 use tauri::Manager;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
@@ -14,6 +15,7 @@ use storage::{SessionStore, SessionSummary, TranscriptSegment};
 use std::path::PathBuf;
 
 #[tauri::command]
+// Génère le code temporaire utilisé pour associer l'extension à cette application.
 fn create_pairing_code() -> String {
     format!("{:06}", rand::thread_rng().gen_range(0..1_000_000))
 }
@@ -37,6 +39,7 @@ fn set_demo_mode(enabled: bool, pipeline: tauri::State<'_, AiPipeline>) { pipeli
 fn get_demo_mode(pipeline: tauri::State<'_, AiPipeline>) -> bool { pipeline.demo_mode() }
 
 #[tauri::command]
+// Ouvre ou remet au premier plan la fenêtre flottante de sous-titres.
 fn open_subtitle_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("subtitles") { window.show().map_err(|error| error.to_string())?; return Ok(()); }
     WebviewWindowBuilder::new(&app, "subtitles", WebviewUrl::App("subtitle.html".into()))
@@ -107,6 +110,7 @@ fn get_audio_meter(engine: tauri::State<'_, AudioEngine>) -> AudioMeter {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Configure les services, enregistre les commandes Tauri puis démarre l'application.
 pub fn run() {
     tauri::Builder::default()
         .manage(AudioEngine::default())

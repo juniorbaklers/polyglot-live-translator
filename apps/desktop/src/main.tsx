@@ -1,3 +1,4 @@
+// Point d'entrée React : monte l'application principale dans la page HTML.
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";

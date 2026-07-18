@@ -1,3 +1,4 @@
+// Document invisible qui conserve la capture audio active en arrière-plan.
 const LOCAL_WS_URL = "ws://127.0.0.1:47832";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
@@ -6,12 +7,14 @@ let sequence = 0;
 let token = "";
 let activeTabId: number | null = null;
 
+// Reçoit du service worker les ordres de démarrage et d'arrêt.
 chrome.runtime.onMessage.addListener((message) => {
   if (message.target !== "offscreen") return;
   if (message.type === "offscreen.start") start(message).catch((error) => report(`Erreur : ${String(error)}`));
   if (message.type === "offscreen.stop") stop();
 });
 
+// Ouvre le son de l'onglet et l'associe à l'application Windows avec le code temporaire.
 async function start(message: { streamId: string; tabId: number; settings: Record<string, string> }) {
   stop();
   activeTabId = message.tabId;
@@ -39,6 +42,7 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
   });
 }
 
+// Découpe le son en blocs d'une seconde puis les envoie dans l'ordre au serveur local.
 function beginRecording() {
   if (!stream) return;
   const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
@@ -51,6 +55,7 @@ function beginRecording() {
   recorder.start(1000);
 }
 
+// Ferme le MediaRecorder, les pistes audio et le WebSocket pour libérer les ressources.
 function stop() {
   if (recorder?.state !== "inactive") recorder?.stop();
   stream?.getTracks().forEach((track) => track.stop());
@@ -59,6 +64,7 @@ function stop() {
   recorder = null; stream = null; socket = null; token = ""; sequence = 0; activeTabId = null;
 }
 
+// Attend que la connexion locale soit réellement ouverte avant de poursuivre.
 function waitForSocket(ws: WebSocket) {
   return new Promise<void>((resolve, reject) => {
     ws.addEventListener("open", () => resolve(), { once: true });
@@ -66,6 +72,7 @@ function waitForSocket(ws: WebSocket) {
   });
 }
 
+// Transforme les données audio binaires en Base64 transportable dans du JSON.
 function blobToBase64(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -75,6 +82,7 @@ function blobToBase64(blob: Blob) {
   });
 }
 
+// Communique l'état courant au reste de l'extension.
 function report(text: string) {
   chrome.runtime.sendMessage({ type: "capture.state", tabId: activeTabId, text }).catch(() => undefined);
 }

@@ -1,3 +1,4 @@
+// Écran principal : sélection audio, association navigateur, sécurité et historique.
 import { useEffect, useMemo, useState } from "react";
 import { audioApi, type AudioDevice, type AudioMeter, type CaptureSource } from "./audio";
 import { invoke } from "@tauri-apps/api/core";
@@ -5,6 +6,7 @@ import "./extra.css";
 import { AcademicFeatures } from "./AcademicFeatures";
 import { Onboarding } from "./Onboarding";
 
+// Regroupement des entrées du menu latéral par domaine fonctionnel.
 const menu = [
   ["CONFIGURATION", "Compte", "Entrée audio", "Langues"],
   ["SORTIE", "Sous-titres", "Sortie vocale", "Partage en direct"],
@@ -13,6 +15,7 @@ const menu = [
 ];
 
 export function App() {
+  // État du test audio et mesures affichées dans la jauge.
   const [running, setRunning] = useState(false);
   const [source, setSource] = useState<CaptureSource>("system-audio");
   const [devices, setDevices] = useState<AudioDevice[]>([]);
@@ -26,6 +29,7 @@ export function App() {
   const [sessions, setSessions] = useState<Array<{ id: number; title: string; segmentCount: number }>>([]);
   const [demoMode, setDemoMode] = useState(false);
 
+  // Charge les périphériques audio disponibles lors du premier affichage.
   useEffect(() => {
     audioApi.listDevices().then(setDevices).catch(() => setDevices([
       { id: "default-render", label: "Sortie Windows par défaut", kind: "output", isDefault: true },
@@ -33,23 +37,27 @@ export function App() {
     ]));
   }, []);
 
+  // Récupère les informations conservées par le backend local sécurisé.
   useEffect(() => {
     invoke<boolean>("has_api_key").then(setApiKeyReady).catch(() => undefined);
     invoke<boolean>("get_demo_mode").then(setDemoMode).catch(() => undefined);
     invoke<Array<{ id: number; title: string; segmentCount: number }>>("list_sessions").then(setSessions).catch(() => undefined);
   }, []);
 
+  // Confie la clé au coffre Windows puis efface sa copie de l'interface.
   async function storeApiKey() {
     try { await invoke("save_api_key", { value: apiKey }); setApiKey(""); setApiKeyReady(true); }
     catch (error) { setAudioMessage(String(error)); }
   }
 
+  // Bascule entre le service réel et les réponses locales de démonstration.
   async function toggleDemoMode() {
     const enabled = !demoMode;
     await invoke("set_demo_mode", { enabled });
     setDemoMode(enabled);
   }
 
+  // Interroge périodiquement l'état de l'extension connectée en WebSocket local.
   useEffect(() => {
     invoke<string>("get_pairing_code").then(setPairingCode).catch(() => undefined);
     const timer = window.setInterval(() => {
@@ -64,6 +72,7 @@ export function App() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Actualise la jauge sonore pendant toute la durée du test.
   useEffect(() => {
     if (!running) return;
     const timer = window.setInterval(() => {
@@ -77,6 +86,7 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [running]);
 
+  // Installe les raccourcis clavier et les retire quand le composant disparaît.
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
       if (!event.ctrlKey || !event.shiftKey) return;
@@ -87,6 +97,7 @@ export function App() {
     return () => window.removeEventListener("keydown", shortcut);
   });
 
+  // Démarre ou arrête la capture tout en maintenant l'interface cohérente en cas d'erreur.
   async function toggleCapture() {
     try {
       if (running) {
