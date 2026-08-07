@@ -31,6 +31,7 @@ export function App() {
   const [sourceLanguage, setSourceLanguage] = useState("auto");
   const [targetLanguage, setTargetLanguage] = useState("fr");
   const [latestSubtitle, setLatestSubtitle] = useState("");
+  const [translationMessage, setTranslationMessage] = useState("");
 
   // Charge les périphériques audio disponibles lors du premier affichage.
   useEffect(() => {
@@ -104,18 +105,19 @@ export function App() {
           "process_live_audio",
           { sourceLanguage, targetLanguage }
         );
-        if (subtitle?.error) setAudioMessage(subtitle.error);
+        if (subtitle?.error) setTranslationMessage(subtitle.error);
         else if (subtitle?.latestTranslation) {
           setLatestSubtitle(subtitle.latestTranslation);
-          setAudioMessage("Transcription et traduction reçues");
+          setTranslationMessage("Transcription et traduction reçues");
         }
       } catch (error) {
-        setAudioMessage(`Transcription impossible : ${String(error)}`);
+        setTranslationMessage(`Transcription impossible : ${String(error)}`);
       } finally {
         busy = false;
       }
     };
 
+    setTranslationMessage("En attente du premier segment audio…");
     const first = window.setTimeout(processSegment, 3500);
     const timer = window.setInterval(processSegment, 4500);
     return () => { cancelled = true; window.clearTimeout(first); window.clearInterval(timer); };
@@ -187,7 +189,7 @@ export function App() {
         <button className={demoMode ? "demo-active" : ""} onClick={toggleDemoMode}>{demoMode ? "Mode démo actif" : "Activer la démo"}</button>
       </section>
       <section className="sessions-panel"><h2>Transcriptions récentes</h2>{sessions.length ? sessions.slice(0,5).map((session) => <div key={session.id}><span>{session.title}</span><strong>{session.segmentCount} segments</strong></div>) : <p>Aucune transcription enregistrée.</p>}</section>
-      {latestSubtitle && <section className="sessions-panel"><h2>Dernière traduction</h2><p>{latestSubtitle}</p></section>}
+      {running && <section className="sessions-panel"><h2>Traduction en direct</h2><p>{translationMessage}</p>{latestSubtitle && <p>{latestSubtitle}</p>}</section>}
       <AcademicFeatures />
       <section className="controls">
         <select aria-label="Langue source" value={sourceLanguage} onChange={(event) => setSourceLanguage(event.target.value)} disabled={running}><option value="auto">Détection automatique</option><option value="fr">Français</option><option value="en">Anglais</option></select>
