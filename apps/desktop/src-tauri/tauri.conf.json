@@ -10,7 +10,30 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [{ "title": "Polyglot Live Translator", "width": 1180, "height": 760, "minWidth": 900, "minHeight": 620 }],
+    "windows": [
+      {
+        "label": "main",
+        "title": "Polyglot Live Translator",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 900,
+        "minHeight": 620
+      },
+      {
+        "label": "subtitles",
+        "title": "Sous-titres Polyglot Live",
+        "url": "subtitle.html",
+        "width": 900,
+        "height": 190,
+        "minWidth": 420,
+        "minHeight": 120,
+        "visible": false,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true
+      }
+    ],
     "security": { "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:*" }
   },
   "bundle": {

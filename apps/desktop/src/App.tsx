@@ -28,6 +28,9 @@ export function App() {
   const [apiKeyReady, setApiKeyReady] = useState(false);
   const [sessions, setSessions] = useState<Array<{ id: number; title: string; segmentCount: number }>>([]);
   const [demoMode, setDemoMode] = useState(false);
+  const [sourceLanguage, setSourceLanguage] = useState("auto");
+  const [targetLanguage, setTargetLanguage] = useState("fr");
+  const [latestSubtitle, setLatestSubtitle] = useState("");
 
   // Charge les périphériques audio disponibles lors du premier affichage.
   useEffect(() => {
@@ -85,6 +88,38 @@ export function App() {
     }, 100);
     return () => window.clearInterval(timer);
   }, [running]);
+
+  // Toutes les quatre secondes, prélève un vrai segment WASAPI. L'appel suivant
+  // n'est lancé qu'après la fin du précédent afin de ne jamais saturer WebView2.
+  useEffect(() => {
+    if (!running) return;
+    let cancelled = false;
+    let busy = false;
+
+    const processSegment = async () => {
+      if (cancelled || busy) return;
+      busy = true;
+      try {
+        const subtitle = await invoke<{ latestOriginal: string; latestTranslation: string; error?: string | null } | null>(
+          "process_live_audio",
+          { sourceLanguage, targetLanguage }
+        );
+        if (subtitle?.error) setAudioMessage(subtitle.error);
+        else if (subtitle?.latestTranslation) {
+          setLatestSubtitle(subtitle.latestTranslation);
+          setAudioMessage("Transcription et traduction reçues");
+        }
+      } catch (error) {
+        setAudioMessage(`Transcription impossible : ${String(error)}`);
+      } finally {
+        busy = false;
+      }
+    };
+
+    const first = window.setTimeout(processSegment, 3500);
+    const timer = window.setInterval(processSegment, 4500);
+    return () => { cancelled = true; window.clearTimeout(first); window.clearInterval(timer); };
+  }, [running, sourceLanguage, targetLanguage]);
 
   // Installe les raccourcis clavier et les retire quand le composant disparaît.
   useEffect(() => {
@@ -152,11 +187,12 @@ export function App() {
         <button className={demoMode ? "demo-active" : ""} onClick={toggleDemoMode}>{demoMode ? "Mode démo actif" : "Activer la démo"}</button>
       </section>
       <section className="sessions-panel"><h2>Transcriptions récentes</h2>{sessions.length ? sessions.slice(0,5).map((session) => <div key={session.id}><span>{session.title}</span><strong>{session.segmentCount} segments</strong></div>) : <p>Aucune transcription enregistrée.</p>}</section>
+      {latestSubtitle && <section className="sessions-panel"><h2>Dernière traduction</h2><p>{latestSubtitle}</p></section>}
       <AcademicFeatures />
       <section className="controls">
-        <select aria-label="Langue source"><option>Détection automatique</option><option>Français</option><option>Anglais</option></select>
+        <select aria-label="Langue source" value={sourceLanguage} onChange={(event) => setSourceLanguage(event.target.value)} disabled={running}><option value="auto">Détection automatique</option><option value="fr">Français</option><option value="en">Anglais</option></select>
         <span>→</span>
-        <select aria-label="Langue cible"><option>Français</option><option>Anglais</option><option>Espagnol</option></select>
+        <select aria-label="Langue cible" value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value)} disabled={running}><option value="fr">Français</option><option value="en">Anglais</option><option value="es">Espagnol</option></select>
         <button className={running ? "stop" : "start"} onClick={toggleCapture}>{running ? "Arrêter" : "Démarrer"}</button>
       </section>
     </main>

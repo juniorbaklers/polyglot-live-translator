@@ -77,13 +77,39 @@ impl SessionStore {
     pub fn sessions(&self) -> Result<Vec<SessionSummary>, String> {
         let connection = self.connection.lock().map_err(|_| "Base SQLite indisponible")?;
         let mut statement = connection.prepare("SELECT s.id,s.title,s.created_at,s.source_language,s.target_language,COUNT(g.id) FROM sessions s LEFT JOIN segments g ON g.session_id=s.id GROUP BY s.id ORDER BY s.created_at DESC").map_err(|error| error.to_string())?;
-        statement.query_map([], |row| Ok(SessionSummary { id: row.get(0)?, title: row.get(1)?, created_at: row.get(2)?, source_language: row.get(3)?, target_language: row.get(4)?, segment_count: row.get(5)? })).map_err(|error| error.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|error| error.to_string())
+        // Le résultat est placé dans une variable pour que l'itérateur SQLite soit
+        // entièrement consommé avant la destruction de la requête et de la connexion.
+        let sessions = statement
+            .query_map([], |row| Ok(SessionSummary {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                created_at: row.get(2)?,
+                source_language: row.get(3)?,
+                target_language: row.get(4)?,
+                segment_count: row.get(5)?,
+            }))
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        Ok(sessions)
     }
 
     pub fn segments(&self, session_id: i64) -> Result<Vec<TranscriptSegment>, String> {
         let connection = self.connection.lock().map_err(|_| "Base SQLite indisponible")?;
         let mut statement = connection.prepare("SELECT sequence,timestamp_ms,original,translation FROM segments WHERE session_id=?1 ORDER BY sequence").map_err(|error| error.to_string())?;
-        statement.query_map([session_id], |row| Ok(TranscriptSegment { sequence: row.get(0)?, timestamp_ms: row.get(1)?, original: row.get(2)?, translation: row.get(3)? })).map_err(|error| error.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|error| error.to_string())
+        // Même principe que pour sessions : les lignes sont collectées pendant que
+        // la requête préparée et son verrou SQLite sont encore valides.
+        let segments = statement
+            .query_map([session_id], |row| Ok(TranscriptSegment {
+                sequence: row.get(0)?,
+                timestamp_ms: row.get(1)?,
+                original: row.get(2)?,
+                translation: row.get(3)?,
+            }))
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        Ok(segments)
     }
 
     /// Exporte une session dans le format choisi par l'utilisateur.

@@ -1,18 +1,26 @@
-// Fenêtre flottante indépendante qui affiche en continu les derniers sous-titres reçus.
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import "./subtitle.css";
 
-// Forme minimale de l'état récupéré depuis le backend local.
 interface Status { latestOriginal: string; latestTranslation: string; error?: string | null }
 
 function SubtitleWindow() {
-  // Une interrogation rapide permet de mettre à jour la fenêtre sans recharger la page.
   const [status, setStatus] = useState<Status>({ latestOriginal: "", latestTranslation: "En attente de traduction…" });
   useEffect(() => {
-    const timer = window.setInterval(() => invoke<Status>("get_browser_capture_status").then(setStatus).catch(() => undefined), 250);
-    return () => window.clearInterval(timer);
+    let disposed = false;
+    let unlisten = () => {};
+    listen<Status>("live-subtitle", (event) => setStatus(event.payload)).then((cleanup) => {
+      if (disposed) cleanup(); else unlisten = cleanup;
+    });
+    // Conserve la compatibilité avec les sous-titres reçus par l'extension.
+    const timer = window.setInterval(() => {
+      invoke<Status>("get_browser_capture_status").then((value) => {
+        if (value.latestOriginal || value.latestTranslation) setStatus(value);
+      }).catch(() => undefined);
+    }, 1500);
+    return () => { disposed = true; unlisten(); window.clearInterval(timer); };
   }, []);
   return <main data-tauri-drag-region>
     <div className="bar" data-tauri-drag-region>Polyglot Live — Sous-titres</div>

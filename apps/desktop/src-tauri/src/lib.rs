@@ -1,7 +1,7 @@
-//! Point d'assemblage du backend Tauri : commandes React, services et état partagé.
 use rand::Rng;
-use tauri::Manager;
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use base64::{engine::general_purpose::STANDARD, Engine};
+use serde::Serialize;
+use tauri::{Emitter, Manager};
 mod audio;
 mod ai;
 mod local_api;
@@ -15,7 +15,6 @@ use storage::{SessionStore, SessionSummary, TranscriptSegment};
 use std::path::PathBuf;
 
 #[tauri::command]
-// Génère le code temporaire utilisé pour associer l'extension à cette application.
 fn create_pairing_code() -> String {
     format!("{:06}", rand::thread_rng().gen_range(0..1_000_000))
 }
@@ -39,20 +38,13 @@ fn set_demo_mode(enabled: bool, pipeline: tauri::State<'_, AiPipeline>) { pipeli
 fn get_demo_mode(pipeline: tauri::State<'_, AiPipeline>) -> bool { pipeline.demo_mode() }
 
 #[tauri::command]
-// Ouvre ou remet au premier plan la fenêtre flottante de sous-titres.
 fn open_subtitle_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("subtitles") { window.show().map_err(|error| error.to_string())?; return Ok(()); }
-    WebviewWindowBuilder::new(&app, "subtitles", WebviewUrl::App("subtitle.html".into()))
-        .title("Sous-titres Polyglot Live")
-        .inner_size(900.0, 190.0)
-        .min_inner_size(420.0, 120.0)
-        .always_on_top(true)
-        .decorations(false)
-        .transparent(true)
-        .resizable(true)
-        .build()
-        .map_err(|error| error.to_string())?;
-    Ok(())
+    let window = app
+        .get_webview_window("subtitles")
+        .ok_or_else(|| "La fenêtre de sous-titres n'est pas configurée".to_string())?;
+
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -109,8 +101,45 @@ fn get_audio_meter(engine: tauri::State<'_, AudioEngine>) -> AudioMeter {
     engine.meter()
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LiveSubtitle {
+    latest_original: String,
+    latest_translation: String,
+    error: Option<String>,
+}
+
+/// Prélève le segment WASAPI courant, le transcrit, le traduit puis actualise
+/// immédiatement la fenêtre flottante. Un seul appel doit être lancé à la fois.
+#[tauri::command]
+async fn process_live_audio(
+    source_language: String,
+    target_language: String,
+    app: tauri::AppHandle,
+    engine: tauri::State<'_, AudioEngine>,
+    pipeline: tauri::State<'_, AiPipeline>,
+) -> Result<Option<LiveSubtitle>, String> {
+    let Some(wav) = engine.take_wav_segment()? else { return Ok(None); };
+    let encoded = STANDARD.encode(wav);
+    let result = pipeline.process_audio(&encoded, "audio/wav", &source_language, &target_language).await;
+    let subtitle = match result {
+        Ok((original, translation)) => LiveSubtitle {
+            latest_original: original,
+            latest_translation: translation,
+            error: None,
+        },
+        Err(message) => LiveSubtitle {
+            latest_original: String::new(),
+            latest_translation: String::new(),
+            error: Some(message),
+        },
+    };
+    app.emit_to("subtitles", "live-subtitle", &subtitle)
+        .map_err(|error| error.to_string())?;
+    Ok(Some(subtitle))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-/// Configure les services, enregistre les commandes Tauri puis démarre l'application.
 pub fn run() {
     tauri::Builder::default()
         .manage(AudioEngine::default())
@@ -145,7 +174,8 @@ pub fn run() {
             list_audio_devices,
             start_audio_capture,
             stop_audio_capture,
-            get_audio_meter
+            get_audio_meter,
+            process_live_audio
         ])
         .run(tauri::generate_context!())
         .expect("échec du démarrage de Polyglot Live Translator");
