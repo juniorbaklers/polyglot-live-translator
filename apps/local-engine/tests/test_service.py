@@ -13,7 +13,8 @@ from websockets.asyncio.client import connect
 
 class RecordingEngine:
     """Double de test : vérifie le routage sans télécharger de modèles IA."""
-    def __init__(self): self.calls = []
+    def __init__(self): self.calls = []; self.resets = 0
+    def reset_session(self): self.resets += 1
     def process(self, audio, source, target):
         self.calls.append((audio, source, target))
         return "Recognized text", "Texte traduit"
@@ -48,6 +49,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(subtitle["sequence"], 4)
             self.assertEqual((await self.receive(socket))["type"], "audio.ack")
             self.assertEqual(self.engine.calls, [(b"audio-bytes", "en", "fr")])
+            self.assertEqual(self.engine.resets, 1)
             await self.send(socket,{"type":"session.stop","token":token})
             self.assertEqual((await self.receive(socket))["state"],"stopped")
 

@@ -48,6 +48,7 @@ class LocalService:
                         source, target = options.get("sourceLanguage", "auto"), options.get("targetLanguage", "fr")
                         if source not in {"auto", "en", "fr", "es"} or target not in {"en", "fr", "es"}:
                             raise ValueError("Langues installées : anglais, français, espagnol")
+                        self.engine.reset_session()
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
                     elif kind == "session.stop":

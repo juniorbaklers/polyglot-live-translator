@@ -38,6 +38,25 @@ Les voix distantes et les moteurs vocaux d’autres extensions sont refusés. In
 une voix Windows dans la langue cible si aucune voix locale compatible n’est disponible.
 Le son original reste audible ; la lecture vocale n’est pas un doublage synchronisé.
 
+## Réglages de précision
+
+Le moteur utilise trois hypothèses de reconnaissance et les 700 derniers caractères
+reconnus comme contexte pour l’extrait suivant. Ce contexte est remis à zéro à chaque
+nouvelle capture et changement de langue source. La traduction calcule un seul
+résultat final au lieu de quatre. Un extrait détecté dans une langue non installée
+est ignoré ; une détection automatique fiable est conservée pour la session.
+Choisir la langue source reste préférable pour une vidéo dans une langue connue.
+
+Le fichier facultatif `apps/local-engine/VOCABULAIRE.txt` peut contenir les noms et
+sigles réellement utilisés dans le cours. Ces termes guident la reconnaissance ;
+ils ne remplacent pas automatiquement des mots dans les transcriptions.
+
+Pour essayer un modèle de reconnaissance plus puissant, fermez le moteur, lancez
+`INSTALLER_PRECISION.cmd` une fois avec Internet, puis `DEMARRER_PRECISION.cmd`.
+Ce mode utilise Whisper small en local, au lieu de base, et peut être sensiblement
+plus lent sur CPU. `DEMARRER.cmd` conserve le modèle base avec les nouveaux réglages.
+La précision sur une vidéo particulière et la vitesse sur Windows restent à mesurer.
+
 ## Fonctionnement gratuit
 
 Il n’y a aucun abonnement ni consommation d’API pour cette version.
