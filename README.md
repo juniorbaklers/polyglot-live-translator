@@ -1,103 +1,77 @@
-# Polyglot Live Translator
+# Polyglot Live Translator — extension réelle en mode local gratuit
 
-Application Windows et extension Chrome/Edge destinées à transcrire, traduire
-et afficher des sous-titres pour les contenus audio et vidéo auxquels
-l'utilisateur a légalement accès.
+Cette version de l’extension capture le son d’un onglet Chrome/Edge, transcrit
+les paroles avec Faster Whisper et les traduit avec Argos Translate sur votre
+ordinateur. Aucun texte de démonstration n’est produit. Les appels à l’API payante
+ont été supprimés du pipeline Rust historique ; l’extension utilise exclusivement
+le nouveau moteur local sur `127.0.0.1:47833`.
 
-> Projet de fin — version académique `1.0.0`. Le dépôt combine des prototypes
-> techniques et des simulations locales clairement identifiées pour couvrir le
-> cahier des charges sans utiliser de paiement ou de comptes commerciaux.
+## Installation Windows
 
-## Fonctions principales
+1. Installez Python **3.11 64 bits**, avec le lanceur `py`.
+2. Dans `apps/local-engine`, lancez **INSTALLER.cmd** une seule fois avec Internet.
+   Il installe les bibliothèques et télécharge les modèles libres. Ces téléchargements
+   peuvent être volumineux et prendre plusieurs minutes ; aucune clé API n’est demandée.
+3. Lancez **DEMARRER.cmd** et gardez la fenêtre ouverte. Copiez le code à six chiffres
+   affiché lorsque le moteur est prêt.
+4. Compilez l’extension avec `pnpm install --frozen-lockfile`, puis `pnpm build:extension`.
+   Dans `chrome://extensions`, activez **Mode développeur**, puis chargez
+   `apps/extension/dist` avec **Charger l’extension non empaquetée**.
+5. Rechargez la page de votre vidéo. Dans le menu de l’extension, enregistrez le code,
+   choisissez les langues et le mode, puis lancez la capture.
 
-- capture du microphone avec Windows Core Audio ;
-- capture du son système avec WASAPI Loopback ;
-- capture volontaire de l'onglet actif avec Manifest V3 ;
-- association locale par code et jeton temporaire ;
-- transcription et traduction par fournisseur configurable ;
-- glossaires spécialisés, notamment SIG/QGIS ;
-- sous-titres bilingues dans le navigateur ;
-- fenêtre flottante Windows toujours au premier plan ;
-- stockage SQLite et sauvegarde progressive ;
-- historique des sessions ;
-- exports TXT, SRT, VTT, CSV, JSON, DOCX et PDF ;
-- résumés, quiz, fiches de révision et cartes mémoire ;
-- mode démonstration sans clé API ;
-- centre académique couvrant audio avancé, langues, voix, partage, comptes et administration ;
-- installateurs MSI/EXE générés par GitHub Actions.
+L’application Windows Tauri historique n’est plus nécessaire pour l’extension.
+Une ancienne application Windows déjà installée n’est pas modifiée par ce code source.
+L’extension ne se connecte pas à son ancien port et refuse les services qui ne
+présentent pas l’identifiant du moteur local gratuit.
 
-## Architecture
+## Fonctions disponibles
 
-| Dossier | Rôle |
-|---|---|
-| `apps/desktop` | Application Windows Tauri, React et Rust |
-| `apps/extension` | Extension Chrome/Edge Manifest V3 |
-| `packages/shared` | Contrats de messages partagés |
-| `docs` | Architecture, sécurité, lots et procédures |
-| `.github/workflows` | Contrôles et génération des installateurs |
+- Transcription et traduction réelles pour anglais, français et espagnol.
+- Détection automatique de ces langues, ou langue source explicitement choisie.
+- Sous-titres, voix locale, ou les deux ; choix modifiable pendant la capture.
+- Fenêtre sombre, déplaçable, redimensionnable et historique des 150 dernières phrases.
+- Traduction seule ou texte bilingue, réglage de la taille du texte.
+- Arrêt de la capture avec conservation du texte visible.
 
-## Installation pour le développement
+Les voix distantes et les moteurs vocaux d’autres extensions sont refusés. Installez
+une voix Windows dans la langue cible si aucune voix locale compatible n’est disponible.
+Le son original reste audible ; la lecture vocale n’est pas un doublage synchronisé.
 
-Prérequis : Windows 10/11, Node.js 20+, pnpm 9.15.4, Rust stable, Microsoft
-C++ Build Tools et WebView2.
+## Fonctionnement gratuit
 
-```powershell
-git clone https://github.com/juniorbaklers/polyglot-live-translator.git
-cd polyglot-live-translator
-npm install -g pnpm@9.15.4
-pnpm install
+Il n’y a aucun abonnement ni consommation d’API pour cette version.
+Le téléchargement initial des modèles utilise Internet ; la transcription et la
+traduction fonctionnent ensuite en local. Le moteur bloque les connexions sortantes
+vers Internet pendant son utilisation. La vidéo en ligne peut toujours nécessiter Internet.
+Les résumés/quiz du pipeline Windows historique sont désactivés, sans résultat simulé.
+
+Le son est traité par fichiers WebM indépendants de cinq secondes. Un petit délai est
+normal. Si le processeur ne suit pas la vidéo, l’extension arrête la capture et affiche
+une explication plutôt que d’accumuler une file audio sans limite. Les performances et
+la qualité de traduction dépendent du matériel, de la langue et de la clarté du son.
+
+## Vérification
+
+```sh
 pnpm typecheck
-pnpm dev:desktop
-```
-
-## Extension Chrome/Edge
-
-```powershell
 pnpm build:extension
+node --test apps/extension/tests/*.test.mjs
+python -m unittest discover -s apps/local-engine/tests -v
 ```
 
-Chargez `apps/extension/dist` en mode développeur dans `chrome://extensions`
-ou `edge://extensions`.
+Les tests de protocole utilisent un double de test pour valider le transport et
+l’association ; le moteur livré utilise toujours les modèles réels.
+La traduction complète sur Windows et les installateurs Tauri n’ont pas été testés
+ni compilés dans cet environnement Linux sans Rust.
 
-## Configuration de l'IA
+## Architecture et licence
 
-La clé API ne doit jamais être enregistrée dans GitHub ou dans l'extension.
-Elle peut être ajoutée dans l'interface Windows, qui utilise le coffre sécurisé
-du système, ou temporairement par variable d'environnement :
+`apps/extension` : extension Manifest V3. `apps/local-engine` : service Python local.
+`apps/desktop` : application Tauri historique avec appels payants désactivés.
+Les documents académiques existants décrivent des versions précédentes ; ce README
+définit le fonctionnement de cette version de l’extension.
 
-```powershell
-$env:OPENAI_API_KEY="votre-cle"
-```
-
-Les modèles peuvent être modifiés avec `OPENAI_TRANSCRIPTION_MODEL` et
-`OPENAI_TRANSLATION_MODEL`.
-
-## Mode démonstration
-
-Dans l'application, cliquez sur **Activer la démo**. Ce mode simule la sortie de
-transcription et permet de présenter l'interface sans envoyer d'audio à un
-service en ligne.
-
-## Confidentialité
-
-- aucune capture automatique ;
-- serveur local limité à `127.0.0.1` ;
-- aucune clé dans l'extension ;
-- transcriptions locales par défaut ;
-- aucun contournement de DRM ou de restriction d'accès.
-
-## État du projet
-
-Les contrôles TypeScript et les builds React/extension sont automatisés. Le
-workflow Windows compile le cœur Rust et produit les installateurs. Les
-fonctions commerciales — facturation, OAuth Google/Microsoft et administration
-multi-utilisateur — sont représentées par une simulation locale. Consultez
-`docs/VERSION-ACADEMIQUE-COMPLETE.md` pour la correspondance détaillée.
-
-## Auteur
-
-BAKELE — Projet Polyglot Live Translator.
-
-## Licence
-
-Distribué sous licence MIT. Consultez [LICENSE](LICENSE).
+Projet BAKELE, licence MIT. Faster Whisper : MIT. Argos Translate : MIT ou CC0.
+Références : https://github.com/SYSTRAN/faster-whisper et
+https://github.com/argosopentech/argos-translate.

@@ -6,3 +6,8 @@ target/
 *.db
 *.db-shm
 *.db-wal
+
+apps/local-engine/.venv/
+apps/local-engine/models/
+__pycache__/
+apps/local-engine/installation-ok.txt
