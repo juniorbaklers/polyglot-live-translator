@@ -26,6 +26,34 @@ class LocalSentenceSplitter:
         return [part.strip() for part in re.split(r'(?<=[.!?])\s+', text) if part.strip()]
 
 
+class SentenceBuffer:
+    """Attend la ponctuation avant de traduire, sans inventer de fin de phrase."""
+
+    def __init__(self):
+        self.text = ""
+        self.waited = 0
+
+    def add(self, text):
+        if text:
+            self.text = " ".join(part for part in (self.text, text) if part)
+        if not self.text:
+            return "", True
+        self.waited += 1
+        ends = list(re.finditer(r'[.!?](?:["”»])?(?=\s|$)', self.text))
+        if ends:
+            boundary = ends[-1].end()
+            finished, self.text = self.text[:boundary].strip(), self.text[boundary:].strip()
+            self.waited = 0
+            return finished, True
+        # Si la vidéo devient silencieuse ou la ponctuation reste absente,
+        # conserver le texte source sans fabriquer une traduction complète.
+        if not text or self.waited >= 2 or len(self.text) >= 600:
+            fragment, self.text = self.text, ""
+            self.waited = 0
+            return fragment, False
+        return "", True
+
+
 def configure_local_translation(module):
     # Stanza rafraîchit resources.json à chaque nouveau processus, même si
     # ses modèles ont été préchargés. Les blocs audio de cinq secondes ne
@@ -38,6 +66,9 @@ def configure_local_translation(module):
 class LocalEngine:
     def __init__(self):
         from faster_whisper import WhisperModel
+        from faster_whisper.audio import decode_audio
+        self.audio_decoder = decode_audio
+        self.batch_seconds = 9.0
         import argostranslate.translate
         self.translate_module = argostranslate.translate
         configure_local_translation(self.translate_module)
@@ -64,6 +95,23 @@ class LocalEngine:
         self.context = ""
         self.detected_language = None
         self.last_source = None
+        self.audio_parts = []
+        self.audio_samples = 0
+        self.sentences = SentenceBuffer()
+
+    def prepare_audio(self, audio):
+        import numpy as np
+        waveform = self.audio_decoder(io.BytesIO(audio), sampling_rate=16000)
+        if len(waveform) > 16000 * 12:
+            raise ValueError("Extrait audio trop long ; relancez la capture.")
+        self.audio_parts.append(waveform)
+        self.audio_samples += len(waveform)
+        if self.audio_samples < self.batch_seconds * 16000:
+            return None
+        combined = np.concatenate(self.audio_parts)
+        self.audio_parts = []
+        self.audio_samples = 0
+        return combined
 
     def process(self, audio: bytes, source: str, target: str):
         if source not in LANGUAGES | {"auto"} or target not in LANGUAGES:
@@ -71,17 +119,21 @@ class LocalEngine:
         if source != self.last_source:
             self.reset_session()
             self.last_source = source
+        audio_batch = self.prepare_audio(audio)
+        if audio_batch is None:
+            return "", ""
         language = source if source != "auto" else self.detected_language
         prompt = " ".join(part for part in (self.vocabulary, self.context) if part) or None
         segments, info = self.model.transcribe(
-            io.BytesIO(audio), language=language,
+            audio_batch, language=language,
             beam_size=self.beam_size, temperature=0.0, initial_prompt=prompt,
             vad_filter=True, vad_parameters={"threshold": 0.35, "speech_pad_ms": 400},
             condition_on_previous_text=False,
         )
         original = " ".join(segment.text.strip() for segment in segments).strip()
         if not original:
-            return "", ""
+            fragment, _ = self.sentences.add("")
+            return fragment, ""
         detected = info.language if language is None else language
         if detected not in LANGUAGES:
             # Un extrait court/bruité ne doit pas interrompre toute la vidéo.
@@ -90,6 +142,11 @@ class LocalEngine:
         if source == "auto" and getattr(info, "language_probability", 0.0) >= 0.8:
             self.detected_language = detected
         self.context = (self.context + " " + original).strip()[-self.context_limit:]
+        original, complete = self.sentences.add(original)
+        if not original:
+            return "", ""
+        if not complete:
+            return original, ""
         if detected == target:
             return original, original
         translator = self.languages[detected].get_translation(self.languages[target])

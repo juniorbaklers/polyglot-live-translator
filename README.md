@@ -71,8 +71,16 @@ traduction fonctionnent ensuite en local. Le moteur bloque les connexions sortan
 vers Internet pendant son utilisation. La vidéo en ligne peut toujours nécessiter Internet.
 Les résumés/quiz du pipeline Windows historique sont désactivés, sans résultat simulé.
 
-Le son est traité par fichiers WebM indépendants de cinq secondes. Un petit délai est
-normal. Si le processeur ne suit pas la vidéo, l’extension arrête la capture et affiche
+Le son est capturé par fichiers WebM indépendants de cinq secondes, décodés et réunis
+par deux (environ dix secondes) avant la reconnaissance. Une fin de phrase sans
+ponctuation est gardée pour la suite. Si la suite reste absente pendant deux lots
+ou si la vidéo devient silencieuse, le texte original est conservé sans traduction
+plutôt que d'inventer une phrase complète. La ponctuation estimée par Whisper peut
+elle-même être incorrecte. Le délai initial est donc environ dix secondes plus le
+calcul, et peut atteindre vingt secondes pour une phrase sans ponctuation.
+Laissez la capture ouverte une vingtaine de secondes après la fin de la vidéo pour
+traiter le dernier lot ; un arrêt immédiat abandonne l'audio ou le texte en attente.
+Si le processeur ne suit pas la vidéo, l’extension arrête la capture et affiche
 une explication plutôt que d’accumuler une file audio sans limite. Les performances et
 la qualité de traduction dépendent du matériel, de la langue et de la clarté du son.
 
