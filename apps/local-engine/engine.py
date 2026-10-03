@@ -1,13 +1,38 @@
 """Moteur local réel : aucun service cloud, aucune clé API, aucun texte simulé."""
 import io
 import os
+import re
 from pathlib import Path
 
 os.environ["ARGOS_MODEL_PROVIDER"] = "OPENNMT"
 os.environ["ARGOS_DEVICE_TYPE"] = "cpu"
+os.environ["ARGOS_CHUNK_TYPE"] = "STANZA"
 
 ROOT = Path(__file__).resolve().parent
 LANGUAGES = {"en", "fr", "es"}
+
+
+class LocalSentenceSplitter:
+    """Découpe les courts extraits audio sans modèle ni accès réseau.
+
+    Argos 1.11 utilise ce contrat pour la segmentation, puis conserve ses
+    modèles neuronaux locaux pour la traduction proprement dite.
+    """
+
+    def __init__(self, pkg):
+        self.pkg = pkg
+
+    def split_sentences(self, text):
+        return [part.strip() for part in re.split(r'(?<=[.!?])\s+', text) if part.strip()]
+
+
+def configure_local_translation(module):
+    # Stanza rafraîchit resources.json à chaque nouveau processus, même si
+    # ses modèles ont été préchargés. Les blocs audio de cinq secondes ne
+    # nécessitent pas ce détecteur : remplacer le point d'extension Argos
+    # avant de construire les traductions évite ce téléchargement implicite.
+    module.settings.chunk_type = module.settings.ChunkType.STANZA
+    module.StanzaSentencizer = LocalSentenceSplitter
 
 
 class LocalEngine:
@@ -15,6 +40,7 @@ class LocalEngine:
         from faster_whisper import WhisperModel
         import argostranslate.translate
         self.translate_module = argostranslate.translate
+        configure_local_translation(self.translate_module)
         # Les téléchargements ont lieu exclusivement dans install_models.py.
         self.model = WhisperModel(
             "base", device="cpu", compute_type="int8", cpu_threads=min(8, os.cpu_count() or 4),
