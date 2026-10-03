@@ -43,7 +43,8 @@ class LocalEngine:
         configure_local_translation(self.translate_module)
         self.precision = os.environ.get("POLYGLOT_MODE", "equilibre") == "precision"
         model_name = "small" if self.precision else "base"
-        self.beam_size = 3
+        self.beam_size = 3 if self.precision else 1
+        self.context_limit = 700 if self.precision else 160
         vocabulary = ROOT / "VOCABULAIRE.txt"
         self.vocabulary = vocabulary.read_text(encoding="utf-8-sig").strip()[:600] if vocabulary.exists() else ""
         self.reset_session()
@@ -75,7 +76,8 @@ class LocalEngine:
         segments, info = self.model.transcribe(
             io.BytesIO(audio), language=language,
             beam_size=self.beam_size, temperature=0.0, initial_prompt=prompt,
-            vad_filter=True, condition_on_previous_text=False,
+            vad_filter=True, vad_parameters={"threshold": 0.35, "speech_pad_ms": 400},
+            condition_on_previous_text=False,
         )
         original = " ".join(segment.text.strip() for segment in segments).strip()
         if not original:
@@ -87,13 +89,13 @@ class LocalEngine:
             return "", ""
         if source == "auto" and getattr(info, "language_probability", 0.0) >= 0.8:
             self.detected_language = detected
-        self.context = (self.context + " " + original).strip()[-700:]
+        self.context = (self.context + " " + original).strip()[-self.context_limit:]
         if detected == target:
             return original, original
         translator = self.languages[detected].get_translation(self.languages[target])
         # Une seule proposition finale est utilisée : inutile de calculer et
         # de combiner quatre résultats pour chaque paragraphe et langue pivot.
         hypotheses = translator.hypotheses(original, num_hypotheses=1)
-        if not hypotheses:
-            raise RuntimeError("Le modèle local n’a produit aucune traduction.")
-        return original, hypotheses[0].value
+        # Garder le texte reconnu même lorsqu'Argos ne produit aucun résultat.
+        # La fenêtre signale cette absence au lieu d'afficher une ligne vide.
+        return original, hypotheses[0].value.strip() if hypotheses else ""

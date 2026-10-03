@@ -40,8 +40,10 @@ Le son original reste audible ; la lecture vocale n’est pas un doublage synchr
 
 ## Réglages de précision
 
-Le moteur utilise trois hypothèses de reconnaissance et les 700 derniers caractères
-reconnus comme contexte pour l’extrait suivant. Ce contexte est remis à zéro à chaque
+Le mode normal utilise une hypothèse de reconnaissance et les 160 derniers caractères
+reconnus comme contexte ; le mode précision utilise trois hypothèses et 700 caractères.
+La détection de parole utilise un seuil de 0,35 pour moins écarter les paroles faibles.
+Ce contexte est remis à zéro à chaque
 nouvelle capture et changement de langue source. La traduction calcule un seul
 résultat final au lieu de quatre. Un extrait détecté dans une langue non installée
 est ignoré ; une détection automatique fiable est conservée pour la session.
@@ -56,6 +58,10 @@ Pour essayer un modèle de reconnaissance plus puissant, fermez le moteur, lance
 Ce mode utilise Whisper small en local, au lieu de base, et peut être sensiblement
 plus lent sur CPU. `DEMARRER.cmd` conserve le modèle base avec les nouveaux réglages.
 La précision sur une vidéo particulière et la vitesse sur Windows restent à mesurer.
+La console affiche la durée de traitement de chaque extrait de cinq secondes.
+Si une traduction est vide, la fenêtre conserve le texte reconnu et indique son
+absence au lieu de laisser une ligne vide. Cela ne reconstitue pas les mots qui
+n'ont pas été reconnus dans l'audio.
 
 ## Fonctionnement gratuit
 

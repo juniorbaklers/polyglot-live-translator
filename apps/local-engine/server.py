@@ -4,6 +4,7 @@ import base64
 import binascii
 import json
 import secrets
+import time
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
@@ -64,7 +65,11 @@ class LocalService:
                         if not audio or len(audio) > MAX_AUDIO_BYTES:
                             raise ValueError("Segment audio vide ou trop volumineux")
                         try:
+                            started = time.perf_counter()
                             original, translation = await asyncio.to_thread(self.engine.process, audio, source, target)
+                            elapsed = time.perf_counter() - started
+                            print(f"Extrait {message.get('sequence', 0)} : {elapsed:.1f} s — "
+                                  f"{len(original)} caractères reconnus, {len(translation)} traduits", flush=True)
                             if original:
                                 await send({"type": "subtitle", "sequence": message.get("sequence", 0), "original": original, "translation": translation, "final": True})
                         finally:

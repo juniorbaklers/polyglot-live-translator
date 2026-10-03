@@ -13,6 +13,7 @@ class RecognitionTests(unittest.TestCase):
         # Tests de routage et contexte ; aucun faux texte dans le moteur livré.
         self.engine = LocalEngine.__new__(LocalEngine)
         self.engine.beam_size = 3
+        self.engine.context_limit = 700
         self.engine.vocabulary = ""
         self.engine.reset_session()
         self.engine.model = Mock()
@@ -56,6 +57,22 @@ class RecognitionTests(unittest.TestCase):
         self.recognized("")
         self.assertEqual(self.engine.process(b"audio", "en", "fr"), ("", ""))
         self.translator.hypotheses.assert_not_called()
+
+    def test_empty_translation_preserves_source_and_capture(self):
+        for result in ([], [SimpleNamespace(value="   ")]):
+            self.recognized("Important words.")
+            self.translator.hypotheses.return_value = result
+            self.assertEqual(self.engine.process(b"audio", "en", "fr"), ("Important words.", ""))
+
+    def test_light_mode_limits_prompt_and_preserves_vad_padding(self):
+        self.engine.beam_size = 1
+        self.engine.context_limit = 160
+        self.recognized("a" * 900)
+        self.engine.process(b"audio", "en", "fr")
+        self.assertEqual(len(self.engine.context), 160)
+        options = self.engine.model.transcribe.call_args.kwargs
+        self.assertEqual(options["beam_size"], 1)
+        self.assertEqual(options["vad_parameters"], {"threshold": 0.35, "speech_pad_ms": 400})
 
     def test_context_is_bounded_and_reset_on_new_source_and_session(self):
         self.recognized("a" * 900)

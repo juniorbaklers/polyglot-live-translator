@@ -79,8 +79,8 @@ function renderHistory() {
   if (!transcriptHistory.length) { const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'Les phrases traduites apparaîtront ici.'; log.appendChild(empty); }
   for (const item of transcriptHistory) {
     const row = document.createElement('div'); row.className = 'phrase';
-    const original = document.createElement('div'); original.className = 'original'; original.textContent = item.original; original.hidden = !bilingual;
-    const translation = document.createElement('div'); translation.className = 'translation'; translation.textContent = item.translation;
+    const original = document.createElement('div'); original.className = 'original'; original.textContent = item.original; original.hidden = !bilingual && Boolean(item.translation);
+    const translation = document.createElement('div'); translation.className = 'translation'; translation.textContent = item.translation || 'Traduction indisponible pour cet extrait.';
     row.append(original, translation); log.appendChild(row);
   }
   root.querySelectorAll<HTMLElement>('[data-view]').forEach((button) => button.setAttribute('aria-pressed', String((button.dataset.view === 'both') === bilingual)));
@@ -116,9 +116,12 @@ chrome.runtime.onMessage.addListener((message) => {
     setNotice(message.text);
   }
   if (message.type === 'overlay.subtitle') {
+    const original = String(message.original ?? '').trim();
+    const translation = String(message.translation ?? '').trim();
+    if (!original && !translation) return;
     ensureOverlay();
     if (!hiddenByUser) panel!.style.display = 'block';
-    transcriptHistory.push({ original: message.original, translation: message.translation });
+    transcriptHistory.push({ original, translation });
     if (transcriptHistory.length > 150) transcriptHistory.shift();
     setNotice(''); renderHistory();
   }
