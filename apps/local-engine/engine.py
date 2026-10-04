@@ -3,6 +3,7 @@ import io
 import os
 import re
 import uuid
+from preferences import DOMAINS, normalized, validate_preferences
 from pathlib import Path
 
 os.environ["ARGOS_MODEL_PROVIDER"] = "OPENNMT"
@@ -50,6 +51,7 @@ class LocalEngine:
         self.context_limit = 700 if self.precision else 160
         vocabulary = ROOT / "VOCABULAIRE.txt"
         self.vocabulary = vocabulary.read_text(encoding="utf-8-sig").strip()[:600] if vocabulary.exists() else ""
+        self.configure_session({})
         self.reset_session()
         # Les téléchargements ont lieu exclusivement dans install_models.py.
         self.model = WhisperModel(
@@ -63,11 +65,19 @@ class LocalEngine:
             if self.languages[source].get_translation(self.languages[target]) is None:
                 raise RuntimeError(f"Modèle {source} → {target} manquant. Relancez INSTALLER.cmd.")
 
+    def configure_session(self, options):
+        preferences = validate_preferences(options)
+        self.session_vocabulary = ", ".join(filter(None, (DOMAINS[preferences["domain"]], preferences["glossary"])))
+        self.corrections = preferences["corrections"]
+
     def reset_session(self):
         self.context = ""
         self.detected_language = None
         self.last_source = None
         self.window = None
+        self.window_start = 0.0
+        self.window_end = 0.0
+        self.uncertain_words = []
         self.last_text = ""
         self.last_language = None
         self.last_duration = 0.0
@@ -76,6 +86,9 @@ class LocalEngine:
         self.revision = 0
 
     def translate_text(self, text, language, target):
+        for item in reversed(getattr(self, "corrections", [])):
+            if item["source"] == language and item["target"] == target and normalized(item["original"]) == normalized(text):
+                return item["translation"]
         if language == target:
             return text
         translator = self.languages[language].get_translation(self.languages[target])
@@ -84,10 +97,14 @@ class LocalEngine:
 
     def result(self, original, language, target, final, bounded=False):
         self.revision += 1
+        tokens = set(re.findall(r"\w+", original.casefold()))
+        uncertain = [word for word in self.uncertain_words if tokens.intersection(re.findall(r"\w+", word.casefold()))]
         return {"id": f"{self.session_id}-{self.segment_number}",
                 "revision": self.revision, "original": original,
                 "translation": self.translate_text(original, language, target),
-                "final": final, "bounded": bounded}
+                "final": final, "bounded": bounded, "sourceLanguage": language, "targetLanguage": target,
+                "start": self.window_start, "end": self.window_end, "timing": "capture",
+                "uncertainWords": uncertain, "origin": "audio"}
 
     def advance(self, original):
         self.context = (self.context + " " + original).strip()[-self.context_limit:]
@@ -109,11 +126,13 @@ class LocalEngine:
             raise ValueError("Extrait audio vide ou trop long ; relancez la capture.")
         self.window = waveform if self.window is None else np.concatenate((self.window, waveform))
         duration = len(self.window) / 16000
+        self.window_end = self.window_start + duration
         language = source if source != "auto" else self.detected_language
-        prompt = " ".join(part for part in (self.vocabulary, self.context) if part) or None
+        prompt = " ".join(part for part in (self.vocabulary, getattr(self, "session_vocabulary", ""), self.context) if part) or None
         segments, info = self.model.transcribe(
             self.window, language=language, beam_size=self.beam_size,
             temperature=0.0, initial_prompt=prompt, word_timestamps=True,
+            hotwords=getattr(self, "session_vocabulary", "") or None,
             vad_filter=True, vad_parameters={"threshold": 0.35, "speech_pad_ms": 400},
             condition_on_previous_text=False,
         )
@@ -124,6 +143,7 @@ class LocalEngine:
             # Laisser une nouvelle chance au prochain extrait, avec plus de contexte.
             if duration >= 12:
                 self.window = None
+                self.window_start = self.window_end
             return []
         if source == "auto" and getattr(info, "language_probability", 0.0) >= 0.8:
             self.detected_language = detected
@@ -131,8 +151,10 @@ class LocalEngine:
         if not original:
             events = self.finish(target)
             self.window = None
+            self.window_start = self.window_end
             return events
         words = [word for segment in segments for word in (getattr(segment, "words", None) or [])]
+        self.uncertain_words = [word.word.strip() for word in words if getattr(word, "probability", 1) < 0.5][:30]
         last_end = words[-1].end if words else max(getattr(segment, "end", duration) for segment in segments)
         # Finaliser après une pause audible, plutôt qu'à chaque ponctuation ajoutée
         # artificiellement par Whisper à la fin d'un petit fichier audio.
@@ -141,6 +163,7 @@ class LocalEngine:
             event = self.result(original, detected, target, True, bounded=not paused)
             self.advance(original)
             self.window = None
+            self.window_start = self.window_end
             return [event]
         # Une phrase ponctuée et stable dans deux reconnaissances successives peut
         # être finalisée sans attendre que le locuteur fasse une pause.
@@ -156,7 +179,11 @@ class LocalEngine:
         events = []
         if cut is not None:
             index, prefix, end = cut
+            complete_end = self.window_end
+            self.window_end = self.window_start + end
             events.append(self.result(prefix, detected, target, True))
+            self.window_start = self.window_end
+            self.window_end = complete_end
             self.advance(prefix)
             self.window = self.window[min(len(self.window), int(end * 16000)):]
             original = "".join(item.word for item in words[index + 1:]).strip()
@@ -174,4 +201,5 @@ class LocalEngine:
         event = self.result(self.last_text, self.last_language, target, True, bounded=True)
         self.advance(self.last_text)
         self.window = None
+        self.window_start = self.window_end
         return [event]

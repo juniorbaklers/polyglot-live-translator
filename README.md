@@ -121,3 +121,7 @@ définit le fonctionnement de cette version de l’extension.
 Projet BAKELE, licence MIT. Faster Whisper : MIT. Argos Translate : MIT ou CC0.
 Références : https://github.com/SYSTRAN/faster-whisper et
 https://github.com/argosopentech/argos-translate.
+
+## Extension 1.3.0 et DevOps
+
+Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v3).

@@ -7,22 +7,31 @@ const output = document.querySelector<HTMLSelectElement>("#output")!;
 const source = document.querySelector<HTMLSelectElement>("#source")!;
 const target = document.querySelector<HTMLSelectElement>("#target")!;
 const codeInput = document.querySelector<HTMLInputElement>("#code")!;
+const inputMode = document.querySelector<HTMLSelectElement>("#input-mode")!;
+const domain = document.querySelector<HTMLSelectElement>("#domain")!;
+const glossary = document.querySelector<HTMLTextAreaElement>("#glossary")!;
+const preferenceKeys = ["inputMode", "domain", "glossary", "corrections"];
 let capturing = false;
 let captureTabId: number | undefined;
 
 function updateButton() {
-  capture.textContent = capturing ? "Arrêter la capture" : "Capturer le son de cet onglet";
+  capture.textContent = capturing ? "Arrêter la traduction" : inputMode.value === "captions" ? "Traduire les sous-titres de cet onglet" : "Capturer le son de cet onglet";
   capture.classList.toggle("stop", capturing);
-  source.disabled = target.disabled = capturing;
+  source.disabled = target.disabled = inputMode.disabled = domain.disabled = glossary.disabled = capturing;
+  document.querySelector<HTMLButtonElement>("#save-preferences")!.disabled = capturing;
 }
 
 capture.disabled = output.disabled = true;
 async function restore() {
-  const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode"]);
+  const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode", ...preferenceKeys]);
   const { activeCapture, captureError } = await chrome.storage.session.get(["activeCapture", "captureError"]);
   codeInput.value = settings.pairingCode ?? "";
   source.value = settings.sourceLanguage ?? "auto";
   target.value = settings.targetLanguage ?? "fr";
+  inputMode.value = settings.inputMode ?? "audio";
+  domain.value = settings.domain ?? "general";
+  glossary.value = settings.glossary ?? "";
+  renderCorrections(settings.corrections ?? []);
   output.value = outputMode(activeCapture?.outputMode ?? settings.outputMode);
   capturing = Boolean(activeCapture);
   captureTabId = activeCapture?.tabId;
@@ -42,6 +51,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     state.textContent = capturing ? "● Connexion au moteur local" : "Capture interrompue";
   }
   if (area === "session" && changes.captureError?.newValue) state.textContent = changes.captureError.newValue;
+  if (area === "local" && changes.corrections) renderCorrections(changes.corrections.newValue ?? []);
   if (area === "local" && changes.outputMode) output.value = outputMode(changes.outputMode.newValue);
 });
 
@@ -68,14 +78,31 @@ capture.addEventListener("click", async () => {
     const tabId = starting ? tab?.id : captureTabId;
     if (tabId === undefined) throw new Error("Onglet actif introuvable.");
     if (starting) {
-      await chrome.storage.local.set({ sourceLanguage: source.value, targetLanguage: target.value, outputMode: outputMode(output.value) });
+      await chrome.storage.local.set({ sourceLanguage: source.value, targetLanguage: target.value, outputMode: outputMode(output.value), inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim() });
     }
     const response = await chrome.runtime.sendMessage({ type: starting ? "capture.start" : "capture.stop", tabId });
     if (!response?.ok) throw new Error(response?.error ?? "La capture n’a pas démarré");
     capturing = starting;
     captureTabId = capturing ? tabId : undefined;
     updateButton();
-    state.textContent = capturing ? "● Connexion et capture en cours" : "Capture interrompue";
+    state.textContent = capturing ? "● Traduction locale en cours" : "Capture interrompue";
   } catch (error) { state.textContent = String(error); }
   finally { capture.disabled = false; }
 });
+
+function renderCorrections(items: {original: string; translation: string; source: string; target: string}[]) {
+  document.querySelector("#correction-count")!.textContent = `Corrections locales (${items.length}/100)`;
+  const list = document.querySelector("#correction-list")!; list.replaceChildren();
+  items.slice(-10).forEach(item => { const line = document.createElement("p"); line.className = "hint"; line.textContent = `${item.source} → ${item.target} : ${item.original} → ${item.translation}`; list.append(line); });
+}
+document.querySelector<HTMLButtonElement>("#save-preferences")!.onclick = async () => {
+  await chrome.storage.local.set({inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim()});
+  state.textContent = "Réglages enregistrés pour la prochaine session.";
+};
+document.querySelector<HTMLButtonElement>("#clear-corrections")!.onclick = async () => {
+  if (!confirm("Effacer toutes les corrections locales ?")) return;
+  await chrome.storage.local.set({corrections: []});
+  state.textContent = "Corrections effacées. Redémarrez la traduction pour appliquer.";
+};
+
+inputMode.addEventListener("change", updateButton);

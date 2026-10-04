@@ -9,7 +9,7 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v2';
+  static engine='polyglot-local-free-v3';
   readyState=0;
   sent=[];
   constructor(url){super();this.url=url;sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.dispatchEvent(new Event('open'));});}
@@ -17,7 +17,7 @@ class LocalSocket extends EventTarget {
   send(raw){const message=JSON.parse(raw);this.sent.push(message);
     if(message.type==='pair.request')this.reply({type:'pair.accepted',token:'local-token',engine:LocalSocket.engine});
     if(message.type==='session.start')this.reply({type:'state',state:'capturing'});
-    if(message.type==='audio.chunk')this.reply({type:'audio.ack',sequence:message.sequence});
+    if(message.type==='audio.chunk'||message.type==='text.chunk')this.reply({type:'audio.ack',sequence:message.sequence});
     if(message.type==='session.stop')this.reply({type:'state',state:'stopped'});
   }
   close(){this.readyState=3;this.dispatchEvent(new Event('close'));}
@@ -59,11 +59,27 @@ test('capturer en fichiers indépendants puis arrêter toutes les ressources',as
  assert.equal(Buffer.from(chunks[0].data,'base64').toString(),'independent-webm-0');
  assert.equal(Buffer.from(chunks[1].data,'base64').toString(),'independent-webm-1');
  sockets[0].reply({type:'subtitle',id:'phrase-1',revision:2,final:false,original:'Hello there',translation:'Bonjour'});await flush();
- assert.equal(messages.at(-1).id,'phrase-1');assert.equal(messages.at(-1).final,false);assert.equal(messages.at(-1).revision,2);
+ const update=messages.findLast(message=>message.type==='subtitle');assert.equal(update.id,'phrase-1');assert.equal(update.final,false);assert.equal(update.revision,2);
  await request({type:'offscreen.stop',target:'offscreen'});await flush();
  assert.equal(sockets[0].sent.filter(message=>message.type==='audio.chunk').length,3);
  assert.equal(timers.size,0);assert.equal(recorders.at(-1).state,'inactive');
  assert.equal(sockets[0].sent.at(-1).type,'session.stop');
+});
+
+test('traduire une piste textuelle sans démarrer le microphone ou MediaRecorder',async t=>{
+ t.mock.method(globalThis,'setTimeout',(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;});
+ t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
+ let mediaCalls=0; navigator.mediaDevices.getUserMedia=async()=>{mediaCalls++;throw new Error('Pas de capture audio attendue');};
+ const before=recorders.length;
+ const start=await request({type:'offscreen.start',target:'offscreen',tabId:7,settings:{pairingCode:'123456',inputMode:'captions',sourceLanguage:'en',domain:'geographie',glossary:'QGIS'}});
+ assert.equal(start.ok,true);assert.equal(mediaCalls,0);assert.equal(recorders.length,before);
+ const ws=sockets.at(-1);
+ assert.equal(ws.sent.find(m=>m.type==='session.start').options.glossary,'QGIS');
+ const result=await request({type:'offscreen.text',target:'offscreen',cue:{text:'A map',language:'en',start:12,end:15}});
+ await flush();assert.equal(result.ok,true);assert.equal(ws.sent.at(-1).type,'text.chunk');
+ assert.equal(messages.findLast(m=>m.type==='capture.metrics').pending,0);
+ await request({type:'offscreen.stop',target:'offscreen'});await flush();assert.equal(timers.size,0);
+ navigator.mediaDevices.getUserMedia=async()=>({getTracks:()=>[{stop(){},addEventListener(){}}]});
 });
 
 test('refuser un ancien serveur ou fournisseur sans identifiant gratuit',async t=>{

@@ -118,6 +118,22 @@ class RecognitionTests(unittest.TestCase):
             self.assertEqual(event["original"], "Important words")
             self.assertEqual(event["translation"], "")
 
+    def test_capture_timeline_advances_across_silence_and_stable_prefix(self):
+        self.feed("", 3)
+        first = self.feed("Hello", 2.95)[0]
+        self.assertEqual((first['start'], first['end']), (3, 6))
+        final = self.feed("Hello everyone.", 4.9)[0]
+        self.assertEqual((final['start'], final['end']), (3, 9))
+        next_row = self.feed("Next", 2.95)[0]
+        self.assertEqual((next_row['start'], next_row['end']), (9, 12))
+
+    def test_low_probability_words_are_flagged_without_claiming_translation_confidence(self):
+        words = [SimpleNamespace(word="Hello", end=.5, probability=.9), SimpleNamespace(word=" QGIS", end=2.95, probability=.3)]
+        event = self.feed("Hello QGIS", 2.95, words=words)[0]
+        self.assertEqual(event['uncertainWords'], ['QGIS'])
+        self.assertNotIn('translationConfidence', event)
+        self.assertEqual(event['sourceLanguage'], 'en')
+
     def test_recognition_settings_preserve_local_context_and_timestamps(self):
         self.feed("Hello", 2.95)
         options = self.engine.model.transcribe.call_args.kwargs

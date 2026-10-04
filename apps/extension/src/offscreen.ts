@@ -1,6 +1,6 @@
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v2";
+const FREE_ENGINE_ID = "polyglot-local-free-v3";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;
@@ -15,6 +15,8 @@ let generation = 0;
 let sending = Promise.resolve();
 let delivering = Promise.resolve();
 let stopping = false;
+let inputMode = "audio";
+const sentAt = new Map<number, number>();
 let stopReply: (() => void) | undefined;
 let stopTask: Promise<void> | undefined;
 
@@ -26,6 +28,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
     return true;
   }
+  if (message.type === "offscreen.text") {
+    try {
+      if (inputMode !== "captions" || stopping || !token || socket?.readyState !== WebSocket.OPEN) throw new Error("Session de sous-titres inactive");
+      if (pending >= 6) { const detail = "Le moteur ne suit plus les sous-titres. Mettez la vidéo en pause puis relancez la traduction."; fail(detail); throw new Error(detail); }
+      const next = sequence++;
+      socket.send(JSON.stringify({...message.cue, type: "text.chunk", token, sequence: next}));
+      sentAt.set(next, Date.now()); pending++;
+      if (pending === 3) report("Le moteur prend du retard sur les sous-titres : mettez la vidéo en pause.");
+      if (pending === 1) watchForReply(generation);
+      sendResponse({ok: true});
+    } catch (error) { sendResponse({ok: false, error: String(error)}); }
+    return;
+  }
   if (message.type === "offscreen.stop") {
     finishStop().then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: String(error) }));
     return true;
@@ -36,16 +51,19 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
   stop();
   const run = generation;
   activeTabId = message.tabId;
-  const captured = await navigator.mediaDevices.getUserMedia({
-    audio: { mandatory: { chromeMediaSource: "tab", chromeMediaSourceId: message.streamId } } as MediaTrackConstraints,
-    video: false
-  });
-  if (generation !== run) { captured.getTracks().forEach((track) => track.stop()); throw new Error("Capture annulée"); }
-  stream = captured;
-  stream.getTracks().forEach((track) => track.addEventListener("ended", () => { if (generation === run) fail("L’onglet ou le flux audio a été fermé."); }));
-  audioContext = new AudioContext();
-  audioContext.createMediaStreamSource(stream).connect(audioContext.destination);
-  await audioContext.resume();
+  inputMode = message.settings.inputMode ?? "audio";
+  if (inputMode === "audio") {
+    const captured = await navigator.mediaDevices.getUserMedia({
+      audio: { mandatory: { chromeMediaSource: "tab", chromeMediaSourceId: message.streamId } } as MediaTrackConstraints,
+      video: false
+    });
+    if (generation !== run) { captured.getTracks().forEach((track) => track.stop()); throw new Error("Capture annulée"); }
+    stream = captured;
+    stream.getTracks().forEach((track) => track.addEventListener("ended", () => { if (generation === run) fail("L’onglet ou le flux audio a été fermé."); }));
+    audioContext = new AudioContext();
+    audioContext.createMediaStreamSource(stream).connect(audioContext.destination);
+    await audioContext.resume();
+  }
   const ws = new WebSocket(LOCAL_WS_URL);
   socket = ws;
   await new Promise<void>((resolve, reject) => {
@@ -67,10 +85,10 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
         if (response.type === "pair.accepted") {
           if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Ce service n’est pas le moteur local gratuit autorisé."); return; }
           token = response.token;
-          ws.send(JSON.stringify({ type: "session.start", token, options: { sourceLanguage: message.settings.sourceLanguage ?? "auto", targetLanguage: message.settings.targetLanguage ?? "fr" } }));
+          ws.send(JSON.stringify({ type: "session.start", token, options: { ...message.settings, pairingCode: undefined, outputMode: undefined, sourceLanguage: message.settings.sourceLanguage ?? "auto", targetLanguage: message.settings.targetLanguage ?? "fr" } }));
         } else if (response.type === "state" && response.state === "capturing") {
           clearTimeout(timeout);
-          beginSegment(run); report("● Moteur local gratuit — traduction en cours"); resolve();
+          if (inputMode === "audio") beginSegment(run); report("● Moteur local gratuit — traduction en cours"); resolve();
         } else if (response.type === "pair.rejected" || response.type === "error") {
           const detail = response.reason ?? response.message ?? "Erreur du moteur local";
           rejectConnection(detail); fail(detail);
@@ -79,13 +97,17 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
           delivering = delivering.then(async () => {
             if (generation !== run) return;
             await chrome.runtime.sendMessage({ type: "subtitle", tabId, original: response.original, translation: response.translation,
-              id: response.id, revision: response.revision, final: response.final, bounded: response.bounded }).catch(() => undefined);
+              id: response.id, revision: response.revision, final: response.final, bounded: response.bounded, start: response.start, end: response.end, timing: response.timing, origin: response.origin,
+              uncertainWords: response.uncertainWords, sourceLanguage: response.sourceLanguage, targetLanguage: response.targetLanguage }).catch(() => undefined);
           });
         } else if (response.type === "state" && response.state === "stopped") {
           const completed = stopReply;
           delivering.then(() => { if (generation === run) completed?.(); });
         } else if (response.type === "audio.ack") {
+          const sent = sentAt.get(response.sequence); sentAt.delete(response.sequence);
           pending = Math.max(0, pending - 1);
+          chrome.runtime.sendMessage({type: "capture.metrics", tabId: activeTabId, processingMs: response.processingMs,
+            responseMs: sent === undefined ? undefined : Date.now() - sent, pending, inputMode}).catch(() => undefined);
           clearTimeout(watchdog);
           if (pending) watchForReply(run);
         }
@@ -107,7 +129,9 @@ function beginSegment(run: number) {
       if (pending >= 6) { fail("Le moteur local est trop lent pour suivre la vidéo. Mettez la vidéo en pause puis relancez la capture."); return; }
       const data = await blobToBase64(event.data);
       if (generation !== run || socket?.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify({ type: "audio.chunk", token, sequence: sequence++, mimeType, data }));
+      const next = sequence++;
+      socket.send(JSON.stringify({ type: "audio.chunk", token, sequence: next, mimeType, data }));
+      sentAt.set(next, Date.now());
       pending++;
       if (pending === 3) report("Le moteur prend du retard. Réduisez la vitesse de la vidéo si ce message revient.");
       if (pending === 1) watchForReply(run);
@@ -161,7 +185,7 @@ function stop(notify = true) {
   socket?.close(); audioContext?.close().catch(() => undefined);
   recorder = null; stream = null; socket = null; audioContext = null;
   token = ""; sequence = 0; pending = 0; activeTabId = null; sending = Promise.resolve(); delivering = Promise.resolve();
-  stopping = false;
+  stopping = false; sentAt.clear();
   stopReply?.(); stopReply = undefined; stopTask = undefined;
 }
 

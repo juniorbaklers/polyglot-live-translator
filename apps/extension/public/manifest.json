@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Polyglot Live Translator",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Transcription et traduction avec un moteur local gratuit, sans API payante.",
   "permissions": [
     "activeTab",

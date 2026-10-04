@@ -2,7 +2,7 @@
 const OFFSCREEN_PATH = "offscreen.html";
 import { deliverTranslation, outputMode, stopSpeech } from "./output";
 
-interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; }
+interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; inputMode?: string; }
 
 async function activeCapture(): Promise<ActiveCapture | undefined> {
   return (await chrome.storage.session.get("activeCapture")).activeCapture;
@@ -32,25 +32,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
       await ensureOffscreenDocument();
-      const streamId = await new Promise<string>((resolve, reject) => {
+      const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections"]);
+      const streamId = settings.inputMode === "captions" ? "" : await new Promise<string>((resolve, reject) => {
         chrome.tabCapture.getMediaStreamId({ targetTabId: message.tabId }, (id) => {
           if (chrome.runtime.lastError || !id) reject(new Error(chrome.runtime.lastError?.message ?? "Flux audio indisponible"));
           else resolve(id);
         });
       });
-      const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode"]);
       stopSpeech();
       await chrome.storage.session.remove("captureError");
-      await chrome.storage.session.set({ activeCapture: { tabId: message.tabId, outputMode: outputMode(settings.outputMode), targetLanguage: settings.targetLanguage ?? "fr" } });
+      await chrome.storage.session.set({ activeCapture: { tabId: message.tabId, outputMode: outputMode(settings.outputMode), targetLanguage: settings.targetLanguage ?? "fr", inputMode: settings.inputMode ?? "audio" } });
       started = true;
       await chrome.tabs.sendMessage(message.tabId, { type: "overlay.show", text: "Connexion au moteur local gratuit…" });
       const response = await chrome.runtime.sendMessage({ type: "offscreen.start", target: "offscreen", streamId, tabId: message.tabId, settings });
       if (!response?.ok) throw new Error(response?.error ?? "Connexion locale impossible");
-      await chrome.action.setBadgeText({ text: "REC", tabId: message.tabId });
+      if (settings.inputMode === "captions") {
+        const captions = await chrome.tabs.sendMessage(message.tabId, { type: "captions.start", sourceLanguage: settings.sourceLanguage });
+        if (!captions?.ok) throw new Error(captions?.error ?? "Sous-titres accessibles introuvables");
+      }
+      await chrome.action.setBadgeText({ text: settings.inputMode === "captions" ? "TXT" : "REC", tabId: message.tabId });
       await chrome.action.setBadgeBackgroundColor({ color: "#c52e40", tabId: message.tabId });
       sendResponse({ ok: true });
     })().catch(async (error) => {
       if (started) {
+        await chrome.tabs.sendMessage(message.tabId, { type: "captions.stop" }).catch(() => undefined);
         await chrome.storage.session.remove("activeCapture");
         stopSpeech();
         await chrome.runtime.sendMessage({ type: "offscreen.stop", target: "offscreen" }).catch(() => undefined);
@@ -66,6 +71,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const tabId = active?.tabId ?? message.tabId;
       if (active) await chrome.storage.session.set({ activeCapture: { ...active, stopping: true } });
       stopSpeech();
+      await chrome.tabs.sendMessage(tabId, { type: "captions.stop" }).catch(() => undefined);
       await chrome.runtime.sendMessage({ type: "offscreen.stop", target: "offscreen" });
       await chrome.storage.session.remove("activeCapture");
       await chrome.action.setBadgeText({ text: "", tabId });
@@ -88,10 +94,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })().catch((error) => sendResponse({ ok: false, error: String(error) }));
     return true;
   }
+  if (message.type === "caption.cue") {
+    (async () => {
+      const active = await activeCapture();
+      if (!active || active.stopping || active.inputMode !== "captions" || _sender.tab?.id !== active.tabId) throw new Error("Session de sous-titres inactive");
+      const response = await chrome.runtime.sendMessage({type: "offscreen.text", target: "offscreen", cue: message.cue});
+      sendResponse(response);
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
+    return true;
+  }
+  if (message.type === "correction.save") {
+    (async () => {
+      if (!_sender.tab) throw new Error("Correction disponible depuis les sous-titres");
+      const item = message.correction;
+      if (!item || !["en", "fr", "es"].includes(item.source) || !["en", "fr", "es"].includes(item.target) ||
+          typeof item.original !== "string" || typeof item.translation !== "string" || !item.original.trim() || !item.translation.trim() || item.original.length > 2000 || item.translation.length > 2000) throw new Error("Correction invalide");
+      const settings = await chrome.storage.local.get("corrections");
+      const items = (settings.corrections ?? []).filter((old: typeof item) => !(old.source === item.source && old.target === item.target && old.original.trim().toLowerCase() === item.original.trim().toLowerCase()));
+      if (items.length >= 100) throw new Error("100 corrections enregistrées. Effacez-en depuis le popup.");
+      items.push({original: item.original.trim(), translation: item.translation.trim(), source: item.source, target: item.target});
+      await chrome.storage.local.set({corrections: items});
+      sendResponse({ok: true});
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
+    return true;
+  }
+  if (message.type === "capture.metrics" && message.tabId) {
+    chrome.tabs.sendMessage(message.tabId, {...message, tabId: undefined, type: "overlay.metrics"}).catch(() => undefined);
+  }
   if (message.type === "capture.failed") {
     (async () => {
       const active = await activeCapture();
       if (!active || active.tabId !== message.tabId) return;
+      await chrome.tabs.sendMessage(active.tabId, { type: "captions.stop" }).catch(() => undefined);
       await chrome.storage.session.remove("activeCapture");
       await chrome.storage.session.set({ captureError: message.text });
       stopSpeech();
@@ -107,7 +141,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const active = await activeCapture();
       if (!active || active.tabId !== message.tabId) { sendResponse({ ok: false }); return; }
       await deliverTranslation(active.tabId, outputMode(active.outputMode), active.targetLanguage, message.original, message.translation,
-        { id: message.id, revision: message.revision, final: message.final, bounded: message.bounded }, !active.stopping);
+        { id: message.id, revision: message.revision, final: message.final, bounded: message.bounded, start: message.start, end: message.end, timing: message.timing, origin: message.origin, uncertainWords: message.uncertainWords, sourceLanguage: message.sourceLanguage, targetLanguage: message.targetLanguage }, !active.stopping);
       sendResponse({ ok: true });
     })().catch(() => sendResponse({ ok: false }));
     return true;

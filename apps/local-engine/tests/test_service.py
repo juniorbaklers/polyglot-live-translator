@@ -16,6 +16,9 @@ class RecordingEngine:
     def __init__(self): self.calls = []; self.resets = 0
     def reset_session(self): self.resets += 1
     def finish(self, target): return []
+    def translate_text(self, text, language, target):
+        self.calls.append((text, language, target)); return "Traduit : " + text
+    def configure_session(self, preferences): self.preferences = preferences
     def process(self, audio, source, target):
         self.calls.append((audio, source, target))
         return [{"id": "test-phrase", "revision": 1, "original": "Recognized text", "translation": "Texte traduit", "final": False}]
@@ -55,6 +58,38 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(self.engine.resets, 1)
             await self.send(socket,{"type":"session.stop","token":token})
             self.assertEqual((await self.receive(socket))["state"],"stopped")
+
+    async def test_caption_mode_translates_text_without_audio_and_preserves_video_times(self):
+        async with connect(self.url) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type":"session.start","token":token,"options":{"inputMode":"captions","sourceLanguage":"en","targetLanguage":"fr","glossary":"QGIS"}})
+            await self.receive(socket)
+            await self.send(socket, {"type":"text.chunk","token":token,"text":"A map", "language":"en","start":12.5,"end":15,"sequence":2})
+            result = await self.receive(socket)
+            self.assertEqual(result['translation'], 'Traduit : A map')
+            self.assertEqual(result['start'], 12.5)
+            self.assertEqual(result['timing'], 'video')
+            self.assertTrue(result['final'])
+            ack = await self.receive(socket)
+            self.assertEqual(ack['sequence'], 2)
+            self.assertIn('processingMs', ack)
+            self.assertEqual(self.engine.calls, [('A map', 'en', 'fr')])
+            self.assertEqual(self.engine.preferences['glossary'], 'QGIS')
+            await self.send(socket, {"type":"audio.chunk","token":token,"data":"YQ=="})
+            self.assertEqual((await self.receive(socket))['type'], 'error')
+
+    async def test_caption_rejects_invalid_ranges_languages_and_oversized_preferences(self):
+        async with connect(self.url) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type":"session.start","token":token,"options":{"glossary":"x" * 1501}})
+            self.assertEqual((await self.receive(socket))['type'], 'error')
+            await self.send(socket, {"type":"session.start","token":token,"options":{"inputMode":"captions"}})
+            await self.receive(socket)
+            cue = {"type":"text.chunk","token":token,"text":"words","language":"en","start":1,"end":2}
+            for bad in ({"end":0}, {"language":"auto"}, {"text":"x" * 4001}, {"start":float('nan')}, {"start":True}):
+                await self.send(socket, {**cue, **bad})
+                self.assertEqual((await self.receive(socket))['type'], 'error')
+            self.assertEqual(self.engine.calls, [])
 
     async def test_reject_wrong_code_and_audio_before_pairing(self):
         async with connect(self.url) as socket:

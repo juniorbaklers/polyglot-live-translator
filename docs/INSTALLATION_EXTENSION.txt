@@ -1,0 +1,40 @@
+POLYGLOT 1.3.0 — V6 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+
+METTRE À JOUR L’INSTALLATION EXISTANTE
+1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd.
+2. Décompressez l’archive.
+3. Copiez TOUS les fichiers du dossier moteur-local dans votre dossier moteur-local actuel, en remplaçant les fichiers portant le même nom.
+   Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
+   preferences.py est nécessaire : copiez-le aussi.
+4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.3.0.
+6. Actualisez la page vidéo. Lancez DEMARRER.cmd ou DEMARRER_PRECISION.cmd et enregistrez le nouveau code dans l’extension.
+   Il n’est pas nécessaire de réinstaller les modèles pour cette mise à jour.
+
+PREMIÈRE INSTALLATION
+Installez Python 3.11 64 bits avec son lanceur py, puis double-cliquez sur moteur-local/INSTALLER.cmd. Internet est nécessaire pour télécharger les dépendances et les modèles.
+Ensuite lancez DEMARRER.cmd. Dans chrome://extensions ou edge://extensions, activez le Mode développeur puis Charger l’extension non empaquetée et sélectionnez le dossier extension (contenant manifest.json).
+Modèle small facultatif : INSTALLER_PRECISION.cmd, puis DEMARRER_PRECISION.cmd. Ce mode peut être plus lent.
+
+UTILISER LES NOUVEAUTÉS
+- Source du texte : Reconnaître le son conserve le fonctionnement audio progressif.
+- Sous-titres accessibles : activez une piste du lecteur et choisissez la langue originale. Le moteur traduit le texte de cette piste sans reconnaissance audio. Certains sites, notamment les lecteurs propriétaires, n’exposent pas leurs sous-titres : choisissez alors Reconnaître le son. Pas de récupération de pistes privées ni de contournement.
+- Domaine : Général, Informatique/DevOps, Géographie/QGIS, Commerce/comptabilité.
+- Glossaire : noms propres, acronymes et termes, 1500 caractères maximum. Enregistrer les réglages, puis démarrer une nouvelle session. Ce sont des indications, pas des substitutions forcées ni un entraînement.
+- Corriger : sur une phrase finalisée, modifiez l’affichage original et la traduction, puis Enregistrer localement. La traduction corrigée sera réutilisée pour le texte initial identique dans les mêmes langues à la prochaine session. La modification de l’original concerne l’affichage ; ajoutez les termes mal reconnus au glossaire. Maximum 100 corrections, consultables et effaçables dans le popup.
+- Les mots reconnus avec une probabilité inférieure à 0,5 sont signalés dans l’original et dans une note. Cela ne mesure pas la fiabilité de la traduction ; un mot non signalé peut être erroné.
+- Calcul indique le traitement du moteur. Attente + calcul mesure la réponse après envoi ; en audio, il faut ajouter la collecte (jusqu’à environ 3 secondes) pour estimer le délai total. Le compteur montre les extraits en attente.
+- Paramètres de la fenêtre (roue dentée) : Exporter TXT ou SRT. Export des 150 dernières phrases finalisées seulement. SRT audio : temps relatifs au début de capture, approximatifs pour la parole, à ajuster pour synchroniser avec une vidéo. SRT des pistes : temps fournis par le lecteur. Pas de stockage automatique de l’historique après fermeture de la page.
+- Réécouter : disponible avec les repères d’une piste vidéo accessible.
+
+MESURER LA PRÉCISION SUR VOTRE ORDINATEUR
+Préparez un extrait audio de 10 à 60 secondes et un fichier reference.txt contenant exactement les paroles. Ouvrez un terminal dans moteur-local :
+.venv\Scripts\python.exe benchmark.py extrait.wav reference.txt --source en --target fr
+Le rapport rapport-precision.json contient le taux d’erreurs de reconnaissance et le temps de calcul. Il ne mesure pas la qualité de traduction. Pour tester small dans CMD : set POLYGLOT_MODE=precision puis relancer la commande.
+
+DEVOPS
+Le fichier DEVOPS.md explique les contrôles GitHub Actions, les archives et le retour à une ancienne version. Aucun compte Azure ni abonnement n’est requis pour utiliser l’extension.
+
+LIMITES
+Les tests automatiques contrôlent le protocole, l’interface et les régressions avec des modèles simulés uniquement dans les tests. Les modèles réels restent à mesurer sur votre PC. Aucun gain de précision chiffré n’est promis. La capture audio s’arrête si le moteur accumule trop d’extraits. Les premières sous-titres peuvent être corrigés à mesure que la phrase arrive. La voix attend une phrase finalisée.
+Les langues installées sont anglais, français et espagnol. Les modèles, corrections et réglages restent locaux ; aucun service payant de traduction n’est appelé.

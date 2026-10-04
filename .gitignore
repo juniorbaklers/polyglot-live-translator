@@ -11,3 +11,6 @@ apps/local-engine/.venv/
 apps/local-engine/models/
 __pycache__/
 apps/local-engine/installation-ok.txt
+
+artifacts/
+rapport-precision.json

@@ -5,10 +5,13 @@ import binascii
 import json
 import secrets
 import time
+import math
+import uuid
+from preferences import validate_preferences
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v2"
+ENGINE_ID = "polyglot-local-free-v3"
 MAX_AUDIO_BYTES = 2_000_000
 
 
@@ -22,6 +25,7 @@ class LocalService:
         token = None
         capturing = False
         source, target = "auto", "fr"
+        input_mode = "audio"
         async def send(message):
             await socket.send(json.dumps(message, ensure_ascii=False))
         try:
@@ -49,6 +53,12 @@ class LocalService:
                         source, target = options.get("sourceLanguage", "auto"), options.get("targetLanguage", "fr")
                         if source not in {"auto", "en", "fr", "es"} or target not in {"en", "fr", "es"}:
                             raise ValueError("Langues installées : anglais, français, espagnol")
+                        input_mode = options.get("inputMode", "audio")
+                        if input_mode not in {"audio", "captions"}:
+                            raise ValueError("Mode d’entrée invalide")
+                        preferences = validate_preferences(options)
+                        if hasattr(self.engine, "configure_session"):
+                            self.engine.configure_session(preferences)
                         self.engine.reset_session()
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
@@ -57,8 +67,28 @@ class LocalService:
                             await send({"type": "subtitle", **result})
                         capturing = False
                         await send({"type": "state", "state": "stopped"})
+                    elif kind == "text.chunk":
+                        if not capturing or input_mode != "captions":
+                            raise ValueError("Session de sous-titres requise")
+                        text = message.get("text")
+                        language = message.get("language", source)
+                        start, end = message.get("start"), message.get("end")
+                        if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+                            raise ValueError("Sous-titre vide ou trop long")
+                        if language not in {"en", "fr", "es"}:
+                            raise ValueError("Choisissez la langue originale des sous-titres")
+                        if any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) for value in (start, end)) or not 0 <= start < end:
+                            raise ValueError("Repères de sous-titres invalides")
+                        started = time.perf_counter()
+                        translation = await asyncio.to_thread(self.engine.translate_text, text.strip(), language, target)
+                        await send({"type": "subtitle", "id": uuid.uuid4().hex, "revision": 1,
+                                    "original": text.strip(), "translation": translation, "final": True,
+                                    "start": start, "end": end, "timing": "video", "origin": "captions",
+                                    "sourceLanguage": language, "targetLanguage": target, "uncertainWords": []})
+                        await send({"type": "audio.ack", "sequence": message.get("sequence", 0),
+                                    "processingMs": round((time.perf_counter() - started) * 1000)})
                     elif kind == "audio.chunk":
-                        if not capturing:
+                        if not capturing or input_mode != "audio":
                             raise ValueError("Démarrez la session avant d’envoyer l’audio")
                         encoded = message.get("data")
                         if not isinstance(encoded, str) or len(encoded) > MAX_AUDIO_BYTES * 4 // 3 + 4:
@@ -75,7 +105,8 @@ class LocalService:
                             for result in results:
                                 await send({"type": "subtitle", "sequence": message.get("sequence", 0), **result})
                         finally:
-                            await send({"type": "audio.ack", "sequence": message.get("sequence", 0)})
+                            await send({"type": "audio.ack", "sequence": message.get("sequence", 0),
+                                        "processingMs": round((time.perf_counter() - started) * 1000)})
                     else:
                         raise ValueError("Message local non reconnu")
                 except (ValueError, TypeError, binascii.Error) as error:

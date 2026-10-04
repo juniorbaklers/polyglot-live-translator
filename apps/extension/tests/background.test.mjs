@@ -38,8 +38,9 @@ test('conserver la session pendant la livraison finale à l’arrêt, sans voix'
   const done = request({ type: 'capture.stop' });
   await flush();
   assert.equal(state.activeCapture.stopping, true);
-  assert.equal(displayed[0].type, 'overlay.subtitle');
-  assert.equal(displayed[0].final, true);
+  const subtitle = displayed.find(message => message.type === 'overlay.subtitle');
+  assert.ok(subtitle);
+  assert.equal(subtitle.final, true);
   assert.equal(spoken, 0);
   releaseDisplay();
   assert.equal((await done).ok, true);
