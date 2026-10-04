@@ -57,3 +57,16 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
  receive({type:'captions.stop'});track.activeCues=[{text:'Another',startTime:7,endTime:10}];track.dispatchEvent(new w.Event('cuechange'));await tick();
  assert.equal(messages.filter(m=>m.type==='caption.cue').length,1);dom.window.close();
 });
+
+test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
+ const {dom,receive,root}=setup();await tick();
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.3.1'});
+ receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
+ root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
+ assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
+ assert.equal(root.querySelector('.translation').textContent,'Bonjour');
+ receive({type:'overlay.reveal',active:false});assert.equal(root.querySelector('[data-stop]').disabled,true);assert.equal(root.querySelector('[data-status]').textContent,'Prêt à traduire');
+ // Une seconde injection ne crée pas un deuxième écouteur ou un panneau supplémentaire.
+ dom.window.eval(compiled);assert.equal(receive({type:'overlay.ping'}).ok,true);assert.equal(dom.window.document.querySelectorAll('#polyglot-live-subtitles').length,1);
+ dom.window.close();
+});

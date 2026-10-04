@@ -25,12 +25,26 @@ async function ensureOffscreenDocument() {
   });
 }
 
+async function ensureContent(tabId: number) {
+  const tab = await chrome.tabs.get(tabId);
+  if (!/^https?:\/\//.test(tab.url ?? "")) throw new Error("Ouvrez la page web de la vidéo. Cette page du navigateur ne peut pas afficher la traduction.");
+  let response;
+  try { response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"}); }
+  catch {
+    try { await chrome.scripting.executeScript({target: {tabId}, files: ["content.js"]}); }
+    catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
+    response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
+  }
+  if (!response?.ok || response.version !== "1.3.1") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+}
+
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "capture.start") {
     let started = false;
     (async () => {
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
+      await ensureContent(message.tabId);
       await ensureOffscreenDocument();
       const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections"]);
       const streamId = settings.inputMode === "captions" ? "" : await new Promise<string>((resolve, reject) => {
@@ -61,8 +75,29 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         await chrome.runtime.sendMessage({ type: "offscreen.stop", target: "offscreen" }).catch(() => undefined);
         await chrome.action.setBadgeText({ text: "", tabId: message.tabId });
       }
+      await chrome.tabs.sendMessage(message.tabId, {type: "overlay.error", text: String(error)}).catch(() => undefined);
       sendResponse({ ok: false, error: String(error) });
     });
+    return true;
+  }
+  if (message.type === "overlay.reveal") {
+    (async () => {
+      const active = await activeCapture();
+      const tabId = active?.tabId ?? message.tabId;
+      if (!Number.isInteger(tabId)) throw new Error("Onglet vidéo introuvable.");
+      await ensureContent(tabId);
+      let mode = active?.outputMode;
+      if (mode === "voice") {
+        mode = "both";
+        await chrome.storage.local.set({outputMode: mode});
+        await chrome.storage.session.set({activeCapture: {...active, outputMode: mode}});
+        await chrome.tabs.sendMessage(tabId, {type: "overlay.mode", outputMode: mode});
+      }
+      const response = await chrome.tabs.sendMessage(tabId, {type: "overlay.reveal", active: Boolean(active && !active.stopping)});
+      if (!response?.ok) throw new Error("Fenêtre indisponible. Actualisez la page vidéo.");
+      await chrome.tabs.update(tabId, {active: true});
+      sendResponse({ok: true, active: Boolean(active), outputMode: mode});
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
     return true;
   }
   if (message.type === "capture.stop") {

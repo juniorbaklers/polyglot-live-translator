@@ -1,4 +1,4 @@
-POLYGLOT 1.3.0 — V6 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+POLYGLOT 1.3.1 — V7 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
 
 METTRE À JOUR L’INSTALLATION EXISTANTE
 1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd.
@@ -7,7 +7,7 @@ METTRE À JOUR L’INSTALLATION EXISTANTE
    Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
    preferences.py est nécessaire : copiez-le aussi.
 4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
-5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.3.0.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.3.1.
 6. Actualisez la page vidéo. Lancez DEMARRER.cmd ou DEMARRER_PRECISION.cmd et enregistrez le nouveau code dans l’extension.
    Il n’est pas nécessaire de réinstaller les modèles pour cette mise à jour.
 
@@ -15,6 +15,11 @@ PREMIÈRE INSTALLATION
 Installez Python 3.11 64 bits avec son lanceur py, puis double-cliquez sur moteur-local/INSTALLER.cmd. Internet est nécessaire pour télécharger les dépendances et les modèles.
 Ensuite lancez DEMARRER.cmd. Dans chrome://extensions ou edge://extensions, activez le Mode développeur puis Charger l’extension non empaquetée et sélectionnez le dossier extension (contenant manifest.json).
 Modèle small facultatif : INSTALLER_PRECISION.cmd, puis DEMARRER_PRECISION.cmd. Ce mode peut être plus lent.
+
+DÉMARRER ET AFFICHER LA FENÊTRE
+Saisissez le code du moteur, choisissez les langues et Fenêtre de traduction, puis cliquez sur Démarrer la traduction. Le code est enregistré automatiquement.
+Si la fenêtre a été masquée, cliquez sur Afficher la fenêtre de traduction : l’historique est conservé. En mode voix seule, ce bouton active aussi l’affichage des sous-titres.
+Les options de vocabulaire, domaines et pistes sont repliées dans Réglages avancés — facultatifs. Aucun réglage avancé n’est nécessaire pour traduire l’audio.
 
 UTILISER LES NOUVEAUTÉS
 - Source du texte : Reconnaître le son conserve le fonctionnement audio progressif.
