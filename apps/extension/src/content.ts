@@ -5,7 +5,7 @@ let root: ShadowRoot | null = null;
 let hiddenByUser = false;
 let bilingual = false;
 let fontSize = 23;
-let transcriptHistory: { original: string; translation: string }[] = [];
+let transcriptHistory: { original: string; translation: string; id?: string; revision: number; final: boolean; bounded?: boolean }[] = [];
 
 function ensureOverlay() {
   if (panel?.isConnected) return panel;
@@ -82,6 +82,11 @@ function renderHistory() {
     const original = document.createElement('div'); original.className = 'original'; original.textContent = item.original; original.hidden = !bilingual && Boolean(item.translation);
     const translation = document.createElement('div'); translation.className = 'translation'; translation.textContent = item.translation || 'Traduction indisponible pour cet extrait.';
     row.append(original, translation); log.appendChild(row);
+    if (!item.final || item.bounded) {
+      const label = document.createElement('div'); label.className = 'note';
+      label.textContent = !item.final ? 'En cours — le texte peut être corrigé.' : 'Fin de phrase non confirmée.';
+      row.appendChild(label);
+    }
   }
   root.querySelectorAll<HTMLElement>('[data-view]').forEach((button) => button.setAttribute('aria-pressed', String((button.dataset.view === 'both') === bilingual)));
   log.scrollTop = atBottom ? log.scrollHeight : previousScroll;
@@ -121,7 +126,14 @@ chrome.runtime.onMessage.addListener((message) => {
     if (!original && !translation) return;
     ensureOverlay();
     if (!hiddenByUser) panel!.style.display = 'block';
-    transcriptHistory.push({ original, translation });
+    const id = typeof message.id === 'string' ? message.id : undefined;
+    const revision = Number(message.revision) || 0;
+    const existing = id ? transcriptHistory.findIndex((item) => item.id === id) : -1;
+    const item = { original, translation, id, revision, final: message.final !== false, bounded: message.bounded === true };
+    if (existing >= 0) {
+      if (transcriptHistory[existing].final || revision <= transcriptHistory[existing].revision) return;
+      transcriptHistory[existing] = item;
+    } else transcriptHistory.push(item);
     if (transcriptHistory.length > 150) transcriptHistory.shift();
     setNotice(''); renderHistory();
   }
@@ -132,6 +144,8 @@ chrome.runtime.onMessage.addListener((message) => {
     else if (!hiddenByUser) panel!.style.display = 'block';
   }
   if ((message.type === 'overlay.stopped' || message.type === 'overlay.error') && root) {
+    transcriptHistory.forEach((item) => { if (!item.final) { item.final = true; item.bounded = true; } });
+    renderHistory();
     root.querySelector<HTMLElement>('[data-status]')!.textContent = 'Traduction arrêtée';
     root.querySelector<HTMLElement>('.status')!.classList.add('stopped');
     root.querySelector<HTMLButtonElement>('[data-stop]')!.disabled = true;

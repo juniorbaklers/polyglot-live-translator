@@ -9,7 +9,7 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v1';
+  static engine='polyglot-local-free-v2';
   readyState=0;
   sent=[];
   constructor(url){super();this.url=url;sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.dispatchEvent(new Event('open'));});}
@@ -18,6 +18,7 @@ class LocalSocket extends EventTarget {
     if(message.type==='pair.request')this.reply({type:'pair.accepted',token:'local-token',engine:LocalSocket.engine});
     if(message.type==='session.start')this.reply({type:'state',state:'capturing'});
     if(message.type==='audio.chunk')this.reply({type:'audio.ack',sequence:message.sequence});
+    if(message.type==='session.stop')this.reply({type:'state',state:'stopped'});
   }
   close(){this.readyState=3;this.dispatchEvent(new Event('close'));}
 }
@@ -51,13 +52,16 @@ test('capturer en fichiers indépendants puis arrêter toutes les ressources',as
  const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{pairingCode:'123456'}});
  assert.equal(result.ok,true);assert.equal(sockets[0].url,'ws://127.0.0.1:47833');
  for(let i=0;i<2;i++){
-   const [id,timer]=[...timers].find(([,timer])=>timer.delay===5000);timers.delete(id);timer.fn();await flush();
+   const [id,timer]=[...timers].find(([,timer])=>timer.delay===3000);timers.delete(id);timer.fn();await flush();
  }
  const chunks=sockets[0].sent.filter(message=>message.type==='audio.chunk');
  assert.equal(chunks.length,2);assert.equal(recorders.length,3);
  assert.equal(Buffer.from(chunks[0].data,'base64').toString(),'independent-webm-0');
  assert.equal(Buffer.from(chunks[1].data,'base64').toString(),'independent-webm-1');
+ sockets[0].reply({type:'subtitle',id:'phrase-1',revision:2,final:false,original:'Hello there',translation:'Bonjour'});await flush();
+ assert.equal(messages.at(-1).id,'phrase-1');assert.equal(messages.at(-1).final,false);assert.equal(messages.at(-1).revision,2);
  await request({type:'offscreen.stop',target:'offscreen'});await flush();
+ assert.equal(sockets[0].sent.filter(message=>message.type==='audio.chunk').length,3);
  assert.equal(timers.size,0);assert.equal(recorders.at(-1).state,'inactive');
  assert.equal(sockets[0].sent.at(-1).type,'session.stop');
 });

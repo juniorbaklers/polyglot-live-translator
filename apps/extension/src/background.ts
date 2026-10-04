@@ -2,7 +2,7 @@
 const OFFSCREEN_PATH = "offscreen.html";
 import { deliverTranslation, outputMode, stopSpeech } from "./output";
 
-interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; }
+interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; }
 
 async function activeCapture(): Promise<ActiveCapture | undefined> {
   return (await chrome.storage.session.get("activeCapture")).activeCapture;
@@ -64,9 +64,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       const active = await activeCapture();
       const tabId = active?.tabId ?? message.tabId;
-      await chrome.storage.session.remove("activeCapture");
+      if (active) await chrome.storage.session.set({ activeCapture: { ...active, stopping: true } });
       stopSpeech();
       await chrome.runtime.sendMessage({ type: "offscreen.stop", target: "offscreen" });
+      await chrome.storage.session.remove("activeCapture");
       await chrome.action.setBadgeText({ text: "", tabId });
       await chrome.tabs.sendMessage(tabId, { type: "overlay.stopped" }).catch(() => undefined);
       sendResponse({ ok: true });
@@ -104,8 +105,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "subtitle" && message.tabId) {
     (async () => {
       const active = await activeCapture();
-      if (!active || active.tabId !== message.tabId) return;
-      deliverTranslation(active.tabId, outputMode(active.outputMode), active.targetLanguage, message.original, message.translation);
-    })().catch(() => undefined);
+      if (!active || active.tabId !== message.tabId) { sendResponse({ ok: false }); return; }
+      await deliverTranslation(active.tabId, outputMode(active.outputMode), active.targetLanguage, message.original, message.translation,
+        { id: message.id, revision: message.revision, final: message.final, bounded: message.bounded }, !active.stopping);
+      sendResponse({ ok: true });
+    })().catch(() => sendResponse({ ok: false }));
+    return true;
   }
 });

@@ -8,11 +8,12 @@ let voiceGeneration = 0;
 export function stopSpeech() { voiceGeneration++; chrome.tts.stop(); }
 
 // La voix est jouée par l'extension, en dehors de l'onglet capturé.
-export function deliverTranslation(tabId: number, mode: OutputMode, language: string, original: string, translation: string) {
-  chrome.tabs.sendMessage(tabId, mode === "voice"
+export interface SubtitleUpdate { id?: string; revision?: number; final?: boolean; bounded?: boolean; }
+export function deliverTranslation(tabId: number, mode: OutputMode, language: string, original: string, translation: string, update?: SubtitleUpdate, allowSpeech = true) {
+  const displayed = chrome.tabs.sendMessage(tabId, mode === "voice"
     ? { type: "overlay.hide" }
-    : { type: "overlay.subtitle", original, translation }).catch(() => undefined);
-  if (mode === "subtitles" || !translation.trim()) return;
+    : { type: "overlay.subtitle", original, translation, ...update }).catch(() => undefined);
+  if (mode === "subtitles" || update?.final === false || !allowSpeech || !translation.trim()) return displayed;
   const reportError = (detail?: string) => {
     chrome.tabs.sendMessage(tabId, {
       type: "overlay.show",
@@ -33,4 +34,5 @@ export function deliverTranslation(tabId: number, mode: OutputMode, language: st
       if (chrome.runtime.lastError) reportError(chrome.runtime.lastError.message);
     });
   });
+  return displayed;
 }

@@ -58,7 +58,7 @@ Pour essayer un modèle de reconnaissance plus puissant, fermez le moteur, lance
 Ce mode utilise Whisper small en local, au lieu de base, et peut être sensiblement
 plus lent sur CPU. `DEMARRER.cmd` conserve le modèle base avec les nouveaux réglages.
 La précision sur une vidéo particulière et la vitesse sur Windows restent à mesurer.
-La console affiche la durée de traitement de chaque extrait de cinq secondes.
+La console affiche la durée de traitement de chaque extrait de trois secondes.
 Si une traduction est vide, la fenêtre conserve le texte reconnu et indique son
 absence au lieu de laisser une ligne vide. Cela ne reconstitue pas les mots qui
 n'ont pas été reconnus dans l'audio.
@@ -71,18 +71,31 @@ traduction fonctionnent ensuite en local. Le moteur bloque les connexions sortan
 vers Internet pendant son utilisation. La vidéo en ligne peut toujours nécessiter Internet.
 Les résumés/quiz du pipeline Windows historique sont désactivés, sans résultat simulé.
 
-Le son est capturé par fichiers WebM indépendants de cinq secondes, décodés et réunis
-par deux (environ dix secondes) avant la reconnaissance. Une fin de phrase sans
-ponctuation est gardée pour la suite. Si la suite reste absente pendant deux lots
-ou si la vidéo devient silencieuse, le texte original est conservé sans traduction
-plutôt que d'inventer une phrase complète. La ponctuation estimée par Whisper peut
-elle-même être incorrecte. Le délai initial est donc environ dix secondes plus le
-calcul, et peut atteindre vingt secondes pour une phrase sans ponctuation.
-Laissez la capture ouverte une vingtaine de secondes après la fin de la vidéo pour
-traiter le dernier lot ; un arrêt immédiat abandonne l'audio ou le texte en attente.
-Si le processeur ne suit pas la vidéo, l’extension arrête la capture et affiche
-une explication plutôt que d’accumuler une file audio sans limite. Les performances et
-la qualité de traduction dépendent du matériel, de la langue et de la clarté du son.
+Le son est capturé par fichiers WebM indépendants de trois secondes. Dès le premier
+extrait reconnu, le moteur émet un sous-titre provisoire marqué « En cours ».
+Il réévalue ensuite la même fenêtre audio avec les nouveaux sons, puis remplace
+la même ligne grâce à un identifiant de phrase et à un numéro de révision.
+Les révisions anciennes et celles arrivant après une finalisation sont ignorées.
+
+Une pause d'au moins 0,7 seconde après le dernier mot reconnu, ou une phrase ponctuée
+stable dans deux reconnaissances successives, permet de stabiliser la ligne.
+Sans pause ni phrase stable, la fenêtre est limitée à douze secondes pour borner
+le calcul et la mémoire ; « Fin de phrase non confirmée » signale ce cas. La suite
+continue sur une nouvelle ligne. La stabilité ne garantit pas l'exactitude du texte.
+
+La voix ne lit que les résultats stabilisés. Le bouton Arrêter interrompt la
+collecte, transmet le dernier fragment puis attend la stabilisation pendant au
+maximum quinze secondes. Le dernier sous-titre est livré avant la fermeture,
+et aucune nouvelle voix n'est lancée pendant cet arrêt. Si le moteur ne répond
+pas à temps, le texte provisoire déjà visible est conservé comme extrait.
+
+Le premier résultat peut apparaître après environ trois secondes plus le calcul,
+sans garantie de délai sur un ordinateur donné. La réévaluation d'une fenêtre
+qui s'allonge augmente le travail du processeur ; si six extraits restent en
+attente, la capture s'arrête avec une explication. Le mode normal utilise base
+et une hypothèse, le mode précision small et trois hypothèses. Les performances,
+les horodatages, la détection des pauses et la qualité restent à mesurer sur une
+vidéo réelle sous Windows. Ces changements n'utilisent aucune API payante.
 
 ## Vérification
 

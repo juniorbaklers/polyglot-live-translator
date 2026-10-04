@@ -15,9 +15,10 @@ class RecordingEngine:
     """Double de test : vérifie le routage sans télécharger de modèles IA."""
     def __init__(self): self.calls = []; self.resets = 0
     def reset_session(self): self.resets += 1
+    def finish(self, target): return []
     def process(self, audio, source, target):
         self.calls.append((audio, source, target))
-        return "Recognized text", "Texte traduit"
+        return [{"id": "test-phrase", "revision": 1, "original": "Recognized text", "translation": "Texte traduit", "final": False}]
 
 
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
@@ -47,6 +48,8 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             subtitle = await self.receive(socket)
             self.assertEqual(subtitle["translation"], "Texte traduit")
             self.assertEqual(subtitle["sequence"], 4)
+            self.assertEqual(subtitle["id"], "test-phrase")
+            self.assertFalse(subtitle["final"])
             self.assertEqual((await self.receive(socket))["type"], "audio.ack")
             self.assertEqual(self.engine.calls, [(b"audio-bytes", "en", "fr")])
             self.assertEqual(self.engine.resets, 1)
@@ -60,6 +63,23 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             await self.send(socket,{"type":"audio.chunk","token":"x","data":"YQ=="})
             self.assertEqual((await self.receive(socket))["type"],"error")
             self.assertEqual(self.engine.calls,[])
+
+    async def test_stop_delivers_final_revision_before_stopped_state(self):
+        self.engine.finish = lambda target: [{"id": "test-phrase", "revision": 2,
+            "original": "Recognized text.", "translation": "Texte traduit.", "final": True}]
+        async with connect(self.url) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type": "session.start", "token": token, "options": {"sourceLanguage": "en", "targetLanguage": "fr"}})
+            await self.receive(socket)
+            await self.send(socket, {"type": "audio.chunk", "token": token, "data": "YQ=="})
+            self.assertFalse((await self.receive(socket))["final"])
+            await self.receive(socket)
+            await self.send(socket, {"type": "session.stop", "token": token})
+            final = await self.receive(socket)
+            self.assertEqual(final["id"], "test-phrase")
+            self.assertEqual(final["revision"], 2)
+            self.assertTrue(final["final"])
+            self.assertEqual((await self.receive(socket))["state"], "stopped")
 
     async def test_reject_invalid_audio_and_stale_token(self):
         async with connect(self.url) as socket:

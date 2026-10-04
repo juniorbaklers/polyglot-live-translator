@@ -8,7 +8,7 @@ import time
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v1"
+ENGINE_ID = "polyglot-local-free-v2"
 MAX_AUDIO_BYTES = 2_000_000
 
 
@@ -53,6 +53,8 @@ class LocalService:
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
                     elif kind == "session.stop":
+                        for result in await asyncio.to_thread(self.engine.finish, target):
+                            await send({"type": "subtitle", **result})
                         capturing = False
                         await send({"type": "state", "state": "stopped"})
                     elif kind == "audio.chunk":
@@ -66,12 +68,12 @@ class LocalService:
                             raise ValueError("Segment audio vide ou trop volumineux")
                         try:
                             started = time.perf_counter()
-                            original, translation = await asyncio.to_thread(self.engine.process, audio, source, target)
+                            results = await asyncio.to_thread(self.engine.process, audio, source, target)
                             elapsed = time.perf_counter() - started
                             print(f"Extrait {message.get('sequence', 0)} : {elapsed:.1f} s — "
-                                  f"{len(original)} caractères reconnus, {len(translation)} traduits", flush=True)
-                            if original:
-                                await send({"type": "subtitle", "sequence": message.get("sequence", 0), "original": original, "translation": translation, "final": True})
+                                  f"{len(results)} mise(s) à jour", flush=True)
+                            for result in results:
+                                await send({"type": "subtitle", "sequence": message.get("sequence", 0), **result})
                         finally:
                             await send({"type": "audio.ack", "sequence": message.get("sequence", 0)})
                     else:

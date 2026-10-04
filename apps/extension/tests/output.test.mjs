@@ -43,6 +43,26 @@ test('ne pas lire une traduction vide', () => {
   assert.equal(spoken.length, 0);
 });
 
+test('mettre à jour les sous-titres provisoires sans lancer la voix', () => {
+  reset();
+  deliverTranslation(7, 'both', 'fr', 'The see', 'La mer', { id: 'phrase-1', revision: 1, final: false });
+  deliverTranslation(7, 'both', 'fr', 'The sea coast', 'Le littoral', { id: 'phrase-1', revision: 2, final: false });
+  assert.equal(messages.length, 2);
+  assert.equal(messages[0].id, messages[1].id);
+  assert.equal(messages[1].revision, 2);
+  assert.equal(spoken.length, 0);
+  deliverTranslation(7, 'both', 'fr', 'The sea coast.', 'Le littoral.', { id: 'phrase-1', revision: 3, final: true });
+  assert.equal(spoken.length, 1);
+  assert.equal(spoken[0].text, 'Le littoral.');
+});
+
+test('la finalisation à l’arrêt conserve le texte sans redémarrer la voix', () => {
+  reset();
+  deliverTranslation(7, 'both', 'fr', 'Final text', 'Texte final', { id: 'phrase-1', revision: 4, final: true }, false);
+  assert.equal(messages[0].translation, 'Texte final');
+  assert.equal(spoken.length, 0);
+});
+
 test('une erreur de synthèse vocale explique comment continuer', () => {
   reset(); deliverTranslation(7, 'voice', 'fr', 'Hello', 'Bonjour');
   spoken[0].options.onEvent({ type: 'error', errorMessage: 'Aucune voix française' });
