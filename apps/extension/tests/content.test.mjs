@@ -68,7 +68,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.5.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.6.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -103,5 +103,27 @@ test('document complet : finalisation, retouches TXT, SRT par phrase et nouvelle
  const srt=await read();assert.match(srt,/Une carte corrigée/);assert.match(srt,/Derniers mots/);assert.doesNotMatch(srt,/complète relue/);
  receive({type:'overlay.show',text:'Connexion au moteur local…'});assert.equal(translation.value,'');assert.equal(original.value,'');assert.equal(translation.readOnly,true);
  root.querySelector('[data-document-export]').click();assert.match(root.querySelector('[data-document-note]').textContent,/Aucune phrase/);
+ dom.window.close();
+});
+
+test('résumé et quiz réels : texte relu, vérification, export et invalidation après modification',async()=>{
+ const {dom,w,receive,root}=setup();await tick();
+ let blob,download;
+ w.URL.createObjectURL=value=>{blob=value;return 'blob:local'};w.URL.revokeObjectURL=()=>{};
+ w.HTMLAnchorElement.prototype.click=function(){download=this.download;};
+ receive({type:'overlay.subtitle',id:'a',revision:1,final:true,original:'A map of the world.',translation:'Une carte du monde.'});
+ root.querySelector('[data-document]').click();root.querySelector('[data-study=quiz]').click();assert.match(root.querySelector('[data-document-note]').textContent,/Arrêtez/);
+ assert.equal(root.querySelector('.study-result').children.length,0);
+ receive({type:'overlay.stopped'});
+ const input=root.querySelector('#document-translation');
+ input.value='QGIS permet de visualiser les données géographiques. Les satellites observent les changements du territoire. <img onerror=alert(1)>';input.dispatchEvent(new w.Event('input'));
+ root.querySelector('[data-study=summary]').click();assert.ok(root.querySelectorAll('.study-result li').length);assert.match(root.querySelector('.study-result').textContent,/QGIS|satellites/);assert.equal(root.querySelector('.study-result img'),null);
+ root.querySelector('[data-study=quiz]').click();const question=root.querySelector('.study-result article');assert.ok(question);
+ const answer=question.querySelector('details > p').textContent.split('\n')[0].replace('Réponse : ','');
+ question.querySelector('input').value='incorrect';question.querySelector('button').click();assert.match(question.querySelector('[role=status]').textContent,/À revoir/);
+ question.querySelector('input').value=answer.toUpperCase();question.querySelector('button').click();assert.equal(question.querySelector('[role=status]').textContent,'Bonne réponse.');
+ root.querySelector('[data-study-export]').click();assert.match(download,/fiche-revision.*\.txt$/);
+ const reader=new w.FileReader();const text=new Promise(resolve=>{reader.onload=()=>resolve(reader.result);});reader.readAsText(blob);const exported=await text;assert.match(exported,/CORRIGÉ ET EXTRAITS/);assert.ok(exported.includes(answer));
+ input.value='Texte corrigé.';input.dispatchEvent(new w.Event('input'));assert.equal(root.querySelector('.study-result').children.length,0);assert.equal(root.querySelector('[data-study-export]').hidden,true);
  dom.window.close();
 });

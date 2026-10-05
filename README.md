@@ -69,7 +69,7 @@ Il n’y a aucun abonnement ni consommation d’API pour cette version.
 Le téléchargement initial des modèles utilise Internet ; la transcription et la
 traduction fonctionnent ensuite en local. Le moteur bloque les connexions sortantes
 vers Internet pendant son utilisation. La vidéo en ligne peut toujours nécessiter Internet.
-Les résumés/quiz du pipeline Windows historique sont désactivés, sans résultat simulé.
+Les appels de résumés/quiz payants du pipeline Windows historique sont désactivés. L’extension propose désormais ses propres outils extractifs gratuits et locaux, sans résultat simulé.
 
 Le son est capturé par fichiers WebM indépendants de trois secondes. Dès le premier
 extrait reconnu, le moteur émet un sous-titre provisoire marqué « En cours ».
@@ -122,12 +122,14 @@ Projet BAKELE, licence MIT. Faster Whisper : MIT. Argos Translate : MIT ou CC0.
 Références : https://github.com/SYSTRAN/faster-whisper et
 https://github.com/argosopentech/argos-translate.
 
-## Extension 1.5.0 et DevOps
+## Extension 1.6.0 et DevOps
 
 Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v4).
 
-La version 1.5.0 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
+La version 1.6.0 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
 
 La fenêtre utilise une présentation plus soignée, des états de phrase lisibles et un bouton Copier. Le moteur conserve le contexte des phrases sans ponctuation lors de courtes pauses, regroupe les fragments des pistes accessibles et réutilise les traductions identiques en session. Les modèles restent inchangés : aucun gain de qualité chiffré n’est établi sans benchmark réel. Le regroupement peut retarder la voix, qui attend la finalisation.
 
-La version 1.5.0 conserve toutes les phrases de la session pour les exports. Le bouton Transcription complète et export donne accès aux textes original et traduit, modifiables après arrêt, avec exports TXT original/traduction/bilingue. Les retouches globales concernent les TXT ; les corrections par phrase alimentent aussi le SRT. Les textes restent en mémoire dans la page : exporter avant nouvelle session, actualisation ou fermeture. Aucun correcteur automatique n’est simulé.
+La version 1.6.0 conserve toutes les phrases de la session pour les exports. Le bouton Transcription complète et export donne accès aux textes original et traduit, modifiables après arrêt, avec exports TXT original/traduction/bilingue. Les retouches globales concernent les TXT ; les corrections par phrase alimentent aussi le SRT. Les textes restent en mémoire dans la page : exporter avant nouvelle session, actualisation ou fermeture. Aucun correcteur automatique n’est simulé.
+
+La version 1.6.0 ajoute un résumé extractif et un quiz à trous dans le document complet. Le résumé sélectionne jusqu’à six phrases, classées par termes et restituées dans leur ordre ; il ne reformule pas le contenu. Le quiz masque un terme dans jusqu’à cinq extraits, vérifie la réponse et affiche le passage d’origine. Les fiches utilisent le texte relu (original ou traduction), sont exportables en TXT avec corrigé et sont invalidées après modification. Aucun réseau ni modèle supplémentaire n’est utilisé. Ces outils dépendent de la transcription, peuvent omettre des notions et ne remplacent pas une évaluation de compréhension.

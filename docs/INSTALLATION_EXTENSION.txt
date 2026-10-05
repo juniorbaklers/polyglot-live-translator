@@ -1,14 +1,14 @@
-POLYGLOT 1.5.0 — V9 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+POLYGLOT 1.6.0 — V10 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
 
 METTRE À JOUR L’INSTALLATION EXISTANTE
-Si vous utilisez déjà la V8 (1.4.0), seul le dossier extension doit être remplacé : le moteur v4 est inchangé. Rechargez ensuite l’extension et actualisez la page vidéo. Pour une version plus ancienne, suivez les étapes ci-dessous.
+Si vous utilisez déjà la V8 (1.4.0) ou la V9 (1.5.0), seul le dossier extension doit être remplacé : le moteur v4 est inchangé. Rechargez ensuite l’extension et actualisez la page vidéo. Pour une version plus ancienne, suivez les étapes ci-dessous.
 1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd.
 2. Décompressez l’archive.
 3. Copiez TOUS les fichiers du dossier moteur-local dans votre dossier moteur-local actuel, en remplaçant les fichiers portant le même nom.
    Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
    caption_buffer.py et preferences.py sont nécessaires : copiez-les aussi. Le moteur et l’extension doivent être mis à jour ensemble.
 4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
-5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.5.0.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.6.0.
 6. Actualisez la page vidéo. Lancez DEMARRER.cmd ou DEMARRER_PRECISION.cmd et enregistrez le nouveau code dans l’extension.
    Il n’est pas nécessaire de réinstaller les modèles pour cette mise à jour.
 
@@ -23,6 +23,7 @@ Si la fenêtre a été masquée, cliquez sur Afficher la fenêtre de traduction 
 Les options de vocabulaire, domaines et pistes sont repliées dans Réglages avancés — facultatifs. Aucun réglage avancé n’est nécessaire pour traduire l’audio.
 
 UTILISER LES NOUVEAUTÉS
+- Résumé et quiz gratuits : après Arrêter, ouvrez Transcription complète et export, relisez et corrigez votre texte, puis dépliez Résumé et quiz gratuits. Choisissez Traduction relue ou Texte original relu. Résumé sélectionne jusqu’à six phrases du texte ; il ne reformule pas et peut omettre des éléments importants. Quiz crée jusqu’à cinq extraits à compléter, avec réponse, vérification et passage d’origine. Ce quiz aide à réviser les termes ; il ne mesure pas toute la compréhension. Exporter la fiche TXT inclut le corrigé. Tout est calculé dans le navigateur sans API ni nouveau modèle. Une modification du texte efface la fiche précédente : générez-la à nouveau. Les erreurs du texte peuvent se retrouver dans la fiche.
 - Transcription complète et export : bouton en bas de la fenêtre. Toutes les phrases finalisées de la session sont conservées, même si seules les 150 dernières apparaissent pendant la lecture. Après Arrêter, relisez et retouchez le texte original et la traduction. Exportez en TXT original, traduction ou bilingue. Les retouches du document complet sont incluses dans ces TXT ; elles ne réentraînent pas le moteur et ne modifient pas les repères SRT. Pour le SRT, utilisez Corriger sur les phrases. Il n’y a pas de correction automatique garantie. Exportez avant une nouvelle session, une actualisation ou la fermeture de la page : le document reste en mémoire dans cette page uniquement.
 - Présentation : fenêtre et commandes modernisées ; les réglages avancés restent facultatifs. Les phrases indiquent En cours, Finalisée, À vérifier ou Corrigée. Ces états ne sont pas des scores de précision. Copier copie une traduction finalisée.
 - Les fragments successifs des pistes accessibles sont regroupés pour fournir plus de contexte. Une proposition apparaît immédiatement et peut être révisée. Sans ponctuation, la voix peut attendre le fragment suivant ou la fin de session ; les groupes sont limités à 12 secondes.
