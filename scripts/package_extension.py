@@ -38,7 +38,7 @@ def package(output, extension_only=False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Historique_V15.zip')
+    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Interface_V16.zip')
     parser.add_argument("--extension-only", action="store_true")
     args = parser.parse_args()
     package(args.output, args.extension_only)

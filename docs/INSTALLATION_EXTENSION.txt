@@ -1,4 +1,4 @@
-POLYGLOT 1.10.0 — V15 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+POLYGLOT 1.11.0 — V16 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
 
 METTRE À JOUR L’INSTALLATION EXISTANTE
 Cette mise à jour concerne le moteur et l’extension. Suivez les étapes ci-dessous en conservant vos modèles et votre environnement.
@@ -8,7 +8,7 @@ Cette mise à jour concerne le moteur et l’extension. Suivez les étapes ci-de
    Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
    caption_buffer.py et preferences.py sont nécessaires : copiez-les aussi. Le moteur et l’extension doivent être mis à jour ensemble.
 4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
-5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.10.0.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.11.0.
 6. Actualisez la page vidéo. Choisissez le démarrage automatique ci-dessous ou lancez DEMARRER.cmd / DEMARRER_PRECISION.cmd manuellement. Aucun code à saisir.
    Depuis la V13, aucun nouveau modèle ni dépendance n’est nécessaire. Depuis une version antérieure, relancez INSTALLER.cmd une fois pour installer tiny et la détection des ressources.
 
@@ -74,3 +74,6 @@ Le service écoute uniquement 127.0.0.1 et refuse les pages web ordinaires, les 
 RELIRE LES LIGNES PRÉCÉDENTES — V15
 Les boutons Lignes précédentes et Revenir au direct restent visibles au-dessus du texte. Le premier remonte dans la fenêtre ; au début d’une page de 150 phrases, un nouveau clic charge une page plus ancienne avec chevauchement. La molette permet aussi de remonter. Pendant la relecture, la page affichée est conservée tandis que la traduction continue ; le compteur +N indique les nouvelles lignes hors de cette page. Revenir au direct affiche les dernières phrases et réactive le suivi automatique. Une nouvelle session réinitialise la relecture. Le document complet et les exports conservent toute la session.
 Depuis la V14 : mettre à jour uniquement le dossier extension, cliquer sur Recharger dans Chrome/Edge et actualiser la page vidéo après avoir exporté les textes à conserver. Moteur et protocole v5 inchangés : aucun nouveau modèle, aucune réinstallation du moteur ni modification du démarrage automatique nécessaire.
+
+DIMENSIONS DE LA FENÊTRE — V16
+Les boutons −/+ du bandeau réduisent et agrandissent la fenêtre, sans changer la taille des caractères. Dimensions choisies par ces boutons mémorisées localement et limitées à l’écran. Le coin inférieur droit permet aussi un redimensionnement manuel. Pour les caractères seulement : Paramètres → Taille du texte. Mise à jour extension seulement depuis la V14, comme pour la V15.

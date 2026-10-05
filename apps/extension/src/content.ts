@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.10.0") return;
-scope.__polyglotContentVersion = "1.10.0";
+if (scope.__polyglotContentVersion === "1.11.0") return;
+scope.__polyglotContentVersion = "1.11.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -10,6 +10,7 @@ let root: ShadowRoot | null = null;
 let hiddenByUser = false;
 let bilingual = false;
 let fontSize = 23;
+let sizeChangedByUser = false;
 interface TranscriptRow { original: string; translation: string; id?: string; revision: number; final: boolean; bounded?: boolean; start?: number; end?: number; timing?: string; origin?: string; uncertainWords?: string[]; sourceLanguage?: string; targetLanguage?: string; corrected?: boolean; recognizedOriginal?: string; }
 let transcriptHistory: TranscriptRow[] = [];
 // Fin fixe pendant la relecture : les nouvelles phrases ne déplacent pas la page.
@@ -37,13 +38,28 @@ function ensureOverlay() {
     .document-access{display:flex;align-items:center;gap:10px;padding:10px 18px;background:#101d32;border-top:1px solid #ffffff12;flex-shrink:0}.document-access span{font-size:11px;color:#a5b9da}.document{position:absolute;inset:0;z-index:2;padding:16px;background:#101d32;display:flex;flex-direction:column;gap:7px;overflow:auto}.document[hidden]{display:none}.document-title,.document-export{display:flex;align-items:center;gap:8px;justify-content:space-between}.document label{font-size:12px;color:#b9c9e7}.document textarea{flex:1;min-height:70px;resize:none;font:14px/1.5 'Segoe UI',sans-serif}.document select{min-width:0;flex:1;padding:7px;background:#1b2e49;color:white;border:1px solid #61739255;border-radius:6px}.document textarea:focus-visible{outline:2px solid #aebfff}.document-title strong{font-size:16px}.study{border:1px solid #7992c34d;border-radius:8px;padding:9px}.study summary{cursor:pointer;color:#d5e2ff;font-weight:600}.study-result{font-size:14px;line-height:1.5}.study-result p{white-space:pre-wrap;overflow-wrap:anywhere}.study-result input{width:100%;padding:7px;border:1px solid #61739255;background:#1b2e49;color:white;border-radius:6px}.study-result article{border-top:1px solid #ffffff19;margin-top:12px;padding-top:9px}.study-result details{margin:7px 0}.study-result button{margin-top:6px}
     .history-controls{display:flex;align-items:center;gap:8px;padding:7px 18px;background:#101d32;flex-shrink:0;flex-wrap:wrap}.history-controls span{font-size:11px;color:#a5b9da}.history-controls button:disabled{opacity:.5;cursor:default}.transcript{flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;scrollbar-color:#435d83 transparent}.phrase{padding:17px 19px;margin-bottom:12px;border:1px solid #91a6cd20;border-radius:13px;background:#1c2b434d}.phrase[data-pending=true]{border-left:3px solid #90a7ff}.phrase-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:10px;color:#95aace;letter-spacing:.3px}.state-label{margin-left:auto;background:#284537;color:#a9e8c6;padding:3px 8px;border-radius:20px}.state-label.review{background:#4d4127;color:#ffdb9f}.phrase .tools{opacity:.7}.phrase:hover .tools,.phrase:focus-within .tools{opacity:1}.translation{font-size:var(--text-size,23px);font-weight:500;line-height:1.6;overflow-wrap:anywhere;white-space:pre-wrap}.original{font-size:16px;color:#adbedb;margin-bottom:9px;line-height:1.5;white-space:pre-wrap}.original[hidden]{display:none}.empty{padding-top:24px;color:#aaa;font-size:17px}.notice{padding:8px 18px;color:#c9d9f3;font-size:12px;background:#192b44}.notice:empty{display:none}
   </style><section class="window" aria-label="Traduction Polyglot Live">
-    <header><span class="brand">Polyglot Live</span><span class="status"><span class="dot"></span><span data-status>Traduction en cours</span></span><button class="stop" data-stop>Arrêter</button><div class="views" aria-label="Affichage du texte"><button data-view="both" aria-pressed="false">Les deux</button><button data-view="translation" aria-pressed="true">Traduction</button></div><button class="icon" data-settings aria-label="Paramètres" aria-expanded="false">⚙</button><button class="icon" data-close aria-label="Masquer la fenêtre">×</button></header>
+    <header><span class="brand">Polyglot Live</span><span class="status"><span class="dot"></span><span data-status>Traduction en cours</span></span><button class="stop" data-stop>Arrêter</button><div class="views" aria-label="Affichage du texte"><button data-view="both" aria-pressed="false">Les deux</button><button data-view="translation" aria-pressed="true">Traduction</button></div><button data-size="smaller" aria-label="Réduire la fenêtre" title="Réduire la fenêtre">−</button><button data-size="larger" aria-label="Agrandir la fenêtre" title="Agrandir la fenêtre">+</button><button class="icon" data-settings aria-label="Paramètres" aria-expanded="false">⚙</button><button class="icon" data-close aria-label="Masquer la fenêtre">×</button></header>
     <div class="settings" hidden><label for="output-mode">Mode de traduction</label><select id="output-mode"><option value="subtitles">Sous-titres traduits</option><option value="voice">Voix traduite</option><option value="both">Sous-titres + voix traduite</option></select><label for="text-size">Taille du texte</label><input id="text-size" type="range" min="16" max="36" value="23"><div class="tools"><button data-export="txt">Exporter TXT</button><button data-export="srt">Exporter SRT</button></div><p class="note">Export de toutes les phrases finalisées de cette session. Audio : temps relatifs au début de la capture ; sous-titres : temps de la vidéo.</p><p class="note">« Les deux » affiche le texte original et sa traduction. La voix conserve le son original. Le moteur local gratuit doit être lancé, automatiquement ou avec DEMARRER.cmd. Aucun service payant n’est utilisé.</p></div>
     <div class="metrics">Temps de traitement : en attente</div><div class="notice" role="status"></div><div class="history-controls"><button data-history-previous>Lignes précédentes</button><button data-history-live disabled>Revenir au direct</button><span data-history-status>Suivi en direct</span></div><div class="transcript" role="log" aria-label="Historique des traductions"><div class="empty">Les phrases traduites apparaîtront ici.</div></div>
     <div class="document-access"><button data-document>Transcription complète et export</button><span data-document-count>0 phrase finalisée</span></div>
     <section class="document" hidden aria-label="Transcription complète"><div class="document-title"><strong>Transcription complète</strong><button data-document-close>Retour à la vidéo</button></div><p class="note" data-document-note></p><label for="document-original">Texte original</label><textarea id="document-original" spellcheck="true"></textarea><label for="document-translation">Traduction</label><textarea id="document-translation" spellcheck="true"></textarea><details class="study"><summary>Résumé et quiz gratuits</summary><p class="note">Après arrêt et relecture, choisissez le texte à étudier. Le résumé sélectionne des phrases du document ; le quiz propose des extraits à compléter. Aucun service externe.</p><div class="document-export"><select id="study-source" aria-label="Texte à étudier"><option value="translation">Traduction relue</option><option value="original">Texte original relu</option></select><button data-study="summary">Résumé</button><button data-study="quiz">Quiz</button></div><div class="study-result" aria-live="polite"></div><button data-study-export hidden>Exporter la fiche TXT</button></details><div class="document-export"><select aria-label="Format d’export" id="document-format"><option value="translation">Traduction — TXT</option><option value="original">Texte original — TXT</option><option value="bilingual">Original et traduction — TXT</option><option value="srt">Sous-titres traduits — SRT</option></select><button data-document-export>Exporter</button></div><p class="note">Les retouches du texte complet sont incluses dans les TXT. Pour le SRT, utilisez Corriger sur chaque phrase afin de conserver ses temps. Exportez avant d’actualiser la page ou de démarrer une nouvelle session.</p></section>
   </section>`;
   document.documentElement.appendChild(panel);
+  applyOverlaySize(760, Math.min(480, window.innerHeight * .7));
+  root.querySelectorAll<HTMLButtonElement>('[data-size]').forEach(button => {
+    button.onclick = () => {
+      sizeChangedByUser = true;
+      const bounds = panel!.getBoundingClientRect();
+      const width = bounds.width || parseFloat(panel!.style.width);
+      const height = bounds.height || parseFloat(panel!.style.height);
+      const factor = button.dataset.size === 'larger' ? 1.15 : 1 / 1.15;
+      applyOverlaySize(Math.round(width * factor), Math.round(height * factor));
+      chrome.storage.local.set({ overlayDimensions: { width: parseFloat(panel!.style.width), height: parseFloat(panel!.style.height) } }).catch(() => undefined);
+    };
+  });
+  window.addEventListener('resize', () => {
+    if (panel?.isConnected) applyOverlaySize(parseFloat(panel.style.width), parseFloat(panel.style.height));
+  });
   const historyLog = root.querySelector<HTMLElement>('.transcript')!;
   historyLog.addEventListener('scroll', () => {
     if (transcriptHistory.length && historyEnd === null && historyLog.scrollHeight - historyLog.clientHeight - historyLog.scrollTop >= 60) {
@@ -106,8 +122,11 @@ function ensureOverlay() {
   root.querySelector<HTMLSelectElement>('#study-source')!.onchange = clearStudy;
   makeDraggable(panel, root.querySelector<HTMLElement>('header')!);
   const currentRoot = root;
-  chrome.storage.local.get(["outputMode", "overlayBilingual", "overlayFontSize"]).then((settings) => {
+  chrome.storage.local.get(["outputMode", "overlayBilingual", "overlayFontSize", "overlayDimensions"]).then((settings) => {
     if (root !== currentRoot) return;
+    if (!sizeChangedByUser && settings.overlayDimensions) {
+      applyOverlaySize(settings.overlayDimensions.width, settings.overlayDimensions.height);
+    }
     bilingual = settings.overlayBilingual === true;
     fontSize = Math.max(16, Math.min(36, Number(settings.overlayFontSize) || 23));
     panel!.style.setProperty("--text-size", `${fontSize}px`);
@@ -117,6 +136,23 @@ function ensureOverlay() {
   }).catch(() => undefined);
   renderHistory();
   return panel;
+}
+
+function applyOverlaySize(requestedWidth: number, requestedHeight: number) {
+  if (!panel || !root) return;
+  const maxWidth = Math.max(1, window.innerWidth - 16);
+  const maxHeight = Math.max(1, window.innerHeight - 16);
+  const minWidth = Math.min(320, maxWidth), minHeight = Math.min(320, maxHeight);
+  const width = Math.max(minWidth, Math.min(maxWidth, Number.isFinite(requestedWidth) ? requestedWidth : 760));
+  const height = Math.max(minHeight, Math.min(maxHeight, Number.isFinite(requestedHeight) ? requestedHeight : 480));
+  Object.assign(panel.style, {width: `${width}px`, height: `${height}px`, minWidth: `${minWidth}px`, minHeight: `${minHeight}px`});
+  const left = parseFloat(panel.style.left), top = parseFloat(panel.style.top);
+  if (Number.isFinite(left)) panel.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, left))}px`;
+  else panel.style.right = `${Math.min(24, (window.innerWidth - width) / 2)}px`;
+  if (Number.isFinite(top)) panel.style.top = `${Math.max(8, Math.min(window.innerHeight - height - 8, top))}px`;
+  else panel.style.bottom = `${Math.min(24, (window.innerHeight - height) / 2)}px`;
+  root.querySelector<HTMLButtonElement>('[data-size=smaller]')!.disabled = width <= minWidth && height <= minHeight;
+  root.querySelector<HTMLButtonElement>('[data-size=larger]')!.disabled = width >= maxWidth && height >= maxHeight;
 }
 
 function setNotice(text: string) { if (root) root.querySelector<HTMLElement>('.notice')!.textContent = text; }
@@ -213,7 +249,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.10.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.11.0"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});

@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const compiled = readFileSync(new URL('../dist/content.js', import.meta.url),'utf8');
-function setup(html='<body></body>') {
+function setup(html='<body></body>', settings={}) {
  const dom=new JSDOM(html,{runScripts:'outside-only',url:'https://video.example'}); const w=dom.window;
  let listener;const messages=[];let saved;
- w.chrome={runtime:{onMessage:{addListener:fn=>listener=fn},sendMessage:async message=>{messages.push(message);return {ok:true};}},storage:{local:{get:async()=>({}),set:async values=>{saved=values;}}}};
+ w.chrome={runtime:{onMessage:{addListener:fn=>listener=fn},sendMessage:async message=>{messages.push(message);return {ok:true};}},storage:{local:{get:async()=>({...settings}),set:async values=>{saved=values;}}}};
  w.eval(compiled);
  const receive=(message)=>{let response;listener(message,{},value=>{response=value});return response;};
  receive({type:'overlay.show',text:'Connexion au moteur local…'});
- return {dom,w,messages,receive,root:w.document.getElementById('polyglot-live-subtitles').shadowRoot};
+ return {dom,w,messages,receive,saved:()=>saved,root:w.document.getElementById('polyglot-live-subtitles').shadowRoot};
 }
 const tick=async()=>{for(let i=0;i<20;i++) await Promise.resolve();};
 test('révisions, texte sécurisé et repères d’incertitude dans l’interface livrée',async()=>{
@@ -68,7 +68,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.10.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.11.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -171,4 +171,28 @@ test('historique ancien : pages bornées et accès aux premières phrases',async
  assert.equal(root.querySelector('.translation').textContent,'T0');assert.match(root.querySelector('[data-history-live]').textContent,/\+111/);
  root.querySelector('[data-history-live]').click();assert.equal(root.querySelector('.translation').textContent,'T111');
  assert.equal([...root.querySelectorAll('.translation')].at(-1).textContent,'T260');dom.window.close();
+});
+
+test('taille de fenêtre : réduire, agrandir et mémoriser sans changer le texte',async()=>{
+ const {dom,w,root,saved}=setup();await tick();
+ const host=w.document.getElementById('polyglot-live-subtitles');
+ const width=parseFloat(host.style.width),height=parseFloat(host.style.height),font=host.style.getPropertyValue('--text-size');
+ root.querySelector('[data-size=smaller]').click();await tick();
+ assert.ok(parseFloat(host.style.width)<width);assert.ok(parseFloat(host.style.height)<height);
+ assert.equal(saved().overlayDimensions.width,parseFloat(host.style.width));
+ const smaller=parseFloat(host.style.width);root.querySelector('[data-size=larger]').click();await tick();
+ assert.ok(parseFloat(host.style.width)>smaller);assert.equal(host.style.getPropertyValue('--text-size'),font);
+ dom.window.close();
+});
+
+test('taille enregistrée : restauration, limites et écran réduit',async()=>{
+ const {dom,w,root}=setup('<body></body>',{overlayDimensions:{width:900,height:600}});await tick();
+ const host=w.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.width,'900px');assert.equal(host.style.height,'600px');
+ host.style.left='900px';host.style.top='650px';host.style.right='auto';host.style.bottom='auto';
+ for(let i=0;i<15;i++)root.querySelector('[data-size=larger]').click();
+ assert.ok(parseFloat(host.style.width)<=w.innerWidth-16);assert.ok(parseFloat(host.style.left)+parseFloat(host.style.width)<=w.innerWidth-8);
+ assert.equal(root.querySelector('[data-size=larger]').disabled,true);
+ Object.defineProperties(w,{innerWidth:{value:300,configurable:true},innerHeight:{value:260,configurable:true}});w.dispatchEvent(new w.Event('resize'));
+ assert.equal(host.style.width,'284px');assert.equal(host.style.height,'244px');
+ assert.equal(host.style.left,'8px');assert.equal(host.style.top,'8px');dom.window.close();
 });

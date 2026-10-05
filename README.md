@@ -141,3 +141,5 @@ Version 1.8.0 : profil de reconnaissance choisi au démarrage selon les cœurs a
 Version 1.9.0 : connexion automatique sans code ni bouton Enregistrer. Le moteur et l’extension ne lisent plus les anciens codes. Origine chrome-extension exigée et vérifiée contre l’identifiant déclaré ; pages web et origine absente refusées, jeton aléatoire lié à chaque connexion, une seule session à la fois. Protocole v5 : mettre à jour les deux parties et redémarrer l’ancien moteur. Les anciennes descriptions du code concernent les versions historiques.
 
 Version 1.10.0 : commandes Lignes précédentes et Revenir au direct visibles au-dessus de l’historique. Relecture sans déplacement par les nouveaux sous-titres, pages de 150 lignes avec chevauchement et retour explicite au suivi en direct. Défilement manuel met en relecture. Mise à jour extension seulement depuis 1.9.0 ; moteur et protocole v5 inchangés.
+
+Version 1.11.0 : boutons −/+ pour redimensionner la fenêtre sans modifier les caractères, dimensions enregistrées localement et bornées à la taille de l’écran, repositionnement après agrandissement ou changement de viewport. Mise à jour extension uniquement depuis 1.9.0.
