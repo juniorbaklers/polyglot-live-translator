@@ -67,9 +67,9 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
   const ws = new WebSocket(LOCAL_WS_URL);
   socket = ws;
   await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Le moteur local ne répond pas. Lancez DEMARRER.cmd.")), 15000);
+    const timeout = setTimeout(() => reject(new Error("Le moteur ne répond pas. Si le démarrage automatique est activé, attendez son chargement et réessayez. Sinon, lancez DEMARRER.cmd.")), 15000);
     const rejectConnection = (detail: string) => { clearTimeout(timeout); reject(new Error(detail)); };
-    ws.addEventListener("error", () => rejectConnection("Moteur local absent. Lancez DEMARRER.cmd puis copiez son code."), { once: true });
+    ws.addEventListener("error", () => rejectConnection("Moteur non connecté. Si le démarrage automatique est activé, attendez son chargement et réessayez. Sinon, lancez DEMARRER.cmd et enregistrez son code une fois."), { once: true });
     ws.addEventListener("close", () => {
       if (generation !== run) return;
       rejectConnection("Connexion au moteur local fermée.");
@@ -83,7 +83,7 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
       try {
         const response = JSON.parse(String(event.data));
         if (response.type === "pair.accepted") {
-          if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Le moteur et l’extension ne sont pas compatibles. Mettez à jour leurs fichiers ensemble, puis relancez DEMARRER.cmd."); return; }
+          if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Le moteur et l’extension ne sont pas compatibles. Mettez à jour leurs fichiers ensemble, puis relancez le moteur."); return; }
           token = response.token;
           ws.send(JSON.stringify({ type: "session.start", token, options: { ...message.settings, pairingCode: undefined, outputMode: undefined, sourceLanguage: message.settings.sourceLanguage ?? "auto", targetLanguage: message.settings.targetLanguage ?? "fr" } }));
         } else if (response.type === "state" && response.state === "capturing") {

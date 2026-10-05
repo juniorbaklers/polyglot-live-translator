@@ -10,20 +10,23 @@ ROOT = Path(__file__).resolve().parent
 
 
 class LogStream:
+    encoding = "utf-8"
+    def isatty(self): return False
     def __init__(self, logger): self.logger = logger
     def write(self, text):
+        size = len(text)
         text = text.strip()
         for line in text.splitlines():
             if line and not line.startswith('Code d’association :'):
                 self.logger.info(line)
-        return len(text)
+        return size
     def flush(self): pass
 
 
 def run():
     os.chdir(ROOT)
     os.environ['POLYGLOT_MODE'] = 'precision' if '--precision' in sys.argv else 'equilibre'
-    logger = logging.getLogger('polyglot-launcher'); logger.setLevel(logging.INFO)
+    logger = logging.getLogger('polyglot-launcher'); logger.setLevel(logging.INFO); logger.propagate = False
     handler = RotatingFileHandler(ROOT / 'moteur-auto.log', maxBytes=1_000_000, backupCount=1, encoding='utf-8')
     handler.setFormatter(logging.Formatter('%(asctime)s %(message)s')); logger.addHandler(handler)
     sys.stdout = sys.stderr = LogStream(logger)
