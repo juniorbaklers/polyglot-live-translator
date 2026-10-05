@@ -1,7 +1,7 @@
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.4.0") return;
-scope.__polyglotContentVersion = "1.4.0";
+if (scope.__polyglotContentVersion === "1.5.0") return;
+scope.__polyglotContentVersion = "1.5.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -11,6 +11,9 @@ let bilingual = false;
 let fontSize = 23;
 interface TranscriptRow { original: string; translation: string; id?: string; revision: number; final: boolean; bounded?: boolean; start?: number; end?: number; timing?: string; origin?: string; uncertainWords?: string[]; sourceLanguage?: string; targetLanguage?: string; corrected?: boolean; recognizedOriginal?: string; }
 let transcriptHistory: TranscriptRow[] = [];
+let sessionActive = false;
+let documentOriginal: string | undefined;
+let documentTranslation: string | undefined;
 let stopCaptions: (() => void) | undefined;
 
 function ensureOverlay() {
@@ -26,11 +29,14 @@ function ensureOverlay() {
     .brand{font-weight:700;white-space:nowrap;letter-spacing:-.2px}.brand:before{content:"P";display:inline-grid;place-items:center;background:#5876ef;color:white;width:27px;height:27px;border-radius:8px;margin-right:9px;font-size:17px}.status{font-size:12px;color:#b1c0da;flex:1;min-width:90px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#75d8bc;box-shadow:0 0 0 4px #75d8bc15;margin-right:6px}.status.stopped .dot{background:#888}
     button{border:1px solid #ffffff19;color:#cfdbef;background:#213450;padding:6px 11px;border-radius:5px;font-weight:600}.stop{background:#683343;color:#fff;border-color:#a36666}.views{display:flex}.views button{border-radius:0}.views button:first-child{border-radius:5px 0 0 5px}.views button:last-child{border-radius:0 5px 5px 0}button[aria-pressed=true]{background:#3e57a3;color:#fff;border-color:#6b7fac}.icon{font-size:23px;border:0;background:transparent;padding:0 4px;line-height:1.1}
     .settings{padding:14px 18px;background:#132238;border-bottom:1px solid #ffffff14}.settings[hidden]{display:none}.settings label{display:block;margin-bottom:7px;color:#d3d3d3}.settings select{width:100%;padding:8px;background:#1b2e49;color:#fff;border:1px solid #555;border-radius:6px;margin-bottom:12px}.settings input{width:100%}.settings{max-height:45%;overflow:auto}textarea{width:100%;padding:8px;background:#1b2e49;color:#fff;border:1px solid #666;border-radius:6px}mark{background:#725a20;color:#fff}.tools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.metrics{color:#91a7ca;font-size:11px;padding:8px 18px;background:#101d32}.editor{margin-top:10px}.note{font-size:12px;color:#aaa;margin:4px 0 0}
+    .document-access{display:flex;align-items:center;gap:10px;padding:10px 18px;background:#101d32;border-top:1px solid #ffffff12;flex-shrink:0}.document-access span{font-size:11px;color:#a5b9da}.document{position:absolute;inset:0;z-index:2;padding:16px;background:#101d32;display:flex;flex-direction:column;gap:7px;overflow:auto}.document[hidden]{display:none}.document-title,.document-export{display:flex;align-items:center;gap:8px;justify-content:space-between}.document label{font-size:12px;color:#b9c9e7}.document textarea{flex:1;min-height:70px;resize:none;font:14px/1.5 'Segoe UI',sans-serif}.document select{min-width:0;flex:1;padding:7px;background:#1b2e49;color:white;border:1px solid #61739255;border-radius:6px}.document textarea:focus-visible{outline:2px solid #aebfff}.document-title strong{font-size:16px}
     .transcript{flex:1;overflow:auto;padding:16px 20px 24px;scrollbar-color:#435d83 transparent}.phrase{padding:17px 19px;margin-bottom:12px;border:1px solid #91a6cd20;border-radius:13px;background:#1c2b434d}.phrase[data-pending=true]{border-left:3px solid #90a7ff}.phrase-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:10px;color:#95aace;letter-spacing:.3px}.state-label{margin-left:auto;background:#284537;color:#a9e8c6;padding:3px 8px;border-radius:20px}.state-label.review{background:#4d4127;color:#ffdb9f}.phrase .tools{opacity:.7}.phrase:hover .tools,.phrase:focus-within .tools{opacity:1}.translation{font-size:var(--text-size,23px);font-weight:500;line-height:1.6;overflow-wrap:anywhere;white-space:pre-wrap}.original{font-size:16px;color:#adbedb;margin-bottom:9px;line-height:1.5;white-space:pre-wrap}.original[hidden]{display:none}.empty{padding-top:24px;color:#aaa;font-size:17px}.notice{padding:8px 18px;color:#c9d9f3;font-size:12px;background:#192b44}.notice:empty{display:none}
   </style><section class="window" aria-label="Traduction Polyglot Live">
     <header><span class="brand">Polyglot Live</span><span class="status"><span class="dot"></span><span data-status>Traduction en cours</span></span><button class="stop" data-stop>Arrêter</button><div class="views" aria-label="Affichage du texte"><button data-view="both" aria-pressed="false">Les deux</button><button data-view="translation" aria-pressed="true">Traduction</button></div><button class="icon" data-settings aria-label="Paramètres" aria-expanded="false">⚙</button><button class="icon" data-close aria-label="Masquer la fenêtre">×</button></header>
-    <div class="settings" hidden><label for="output-mode">Mode de traduction</label><select id="output-mode"><option value="subtitles">Sous-titres traduits</option><option value="voice">Voix traduite</option><option value="both">Sous-titres + voix traduite</option></select><label for="text-size">Taille du texte</label><input id="text-size" type="range" min="16" max="36" value="23"><div class="tools"><button data-export="txt">Exporter TXT</button><button data-export="srt">Exporter SRT</button></div><p class="note">Export des 150 dernières phrases finalisées. Audio : temps relatifs au début de la capture ; sous-titres : temps de la vidéo.</p><p class="note">« Les deux » affiche le texte original et sa traduction. La voix conserve le son original. Le moteur local gratuit doit être lancé avec DEMARRER.cmd. Aucun service payant n’est utilisé.</p></div>
+    <div class="settings" hidden><label for="output-mode">Mode de traduction</label><select id="output-mode"><option value="subtitles">Sous-titres traduits</option><option value="voice">Voix traduite</option><option value="both">Sous-titres + voix traduite</option></select><label for="text-size">Taille du texte</label><input id="text-size" type="range" min="16" max="36" value="23"><div class="tools"><button data-export="txt">Exporter TXT</button><button data-export="srt">Exporter SRT</button></div><p class="note">Export de toutes les phrases finalisées de cette session. Audio : temps relatifs au début de la capture ; sous-titres : temps de la vidéo.</p><p class="note">« Les deux » affiche le texte original et sa traduction. La voix conserve le son original. Le moteur local gratuit doit être lancé avec DEMARRER.cmd. Aucun service payant n’est utilisé.</p></div>
     <div class="metrics">Temps de traitement : en attente</div><div class="notice" role="status"></div><div class="transcript" role="log" aria-label="Historique des traductions"><div class="empty">Les phrases traduites apparaîtront ici.</div></div>
+    <div class="document-access"><button data-document>Transcription complète et export</button><span data-document-count>0 phrase finalisée</span></div>
+    <section class="document" hidden aria-label="Transcription complète"><div class="document-title"><strong>Transcription complète</strong><button data-document-close>Retour à la vidéo</button></div><p class="note" data-document-note></p><label for="document-original">Texte original</label><textarea id="document-original" spellcheck="true"></textarea><label for="document-translation">Traduction</label><textarea id="document-translation" spellcheck="true"></textarea><div class="document-export"><select aria-label="Format d’export" id="document-format"><option value="translation">Traduction — TXT</option><option value="original">Texte original — TXT</option><option value="bilingual">Original et traduction — TXT</option><option value="srt">Sous-titres traduits — SRT</option></select><button data-document-export>Exporter</button></div><p class="note">Les retouches du texte complet sont incluses dans les TXT. Pour le SRT, utilisez Corriger sur chaque phrase afin de conserver ses temps. Exportez avant d’actualiser la page ou de démarrer une nouvelle session.</p></section>
   </section>`;
   document.documentElement.appendChild(panel);
   root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => { hiddenByUser = true; panel!.style.display = "none"; };
@@ -60,6 +66,17 @@ function ensureOverlay() {
     } catch { setNotice("Connexion à l’extension interrompue."); }
   };
   root.querySelectorAll<HTMLButtonElement>('[data-export]').forEach(button => { button.onclick = () => exportTranscript(button.dataset.export!); });
+  root.querySelector<HTMLButtonElement>('[data-document]')!.onclick = () => {
+    root!.querySelector<HTMLElement>('.document')!.hidden = false; renderDocument();
+  };
+  root.querySelector<HTMLButtonElement>('[data-document-close]')!.onclick = () => { root!.querySelector<HTMLElement>('.document')!.hidden = true; };
+  root.querySelector<HTMLTextAreaElement>('#document-original')!.oninput = event => {
+    if (!sessionActive) documentOriginal = (event.target as HTMLTextAreaElement).value;
+  };
+  root.querySelector<HTMLTextAreaElement>('#document-translation')!.oninput = event => {
+    if (!sessionActive) documentTranslation = (event.target as HTMLTextAreaElement).value;
+  };
+  root.querySelector<HTMLButtonElement>('[data-document-export]')!.onclick = () => exportDocument();
   makeDraggable(panel, root.querySelector<HTMLElement>('header')!);
   const currentRoot = root;
   chrome.storage.local.get(["outputMode", "overlayBilingual", "overlayFontSize"]).then((settings) => {
@@ -84,7 +101,7 @@ function renderHistory() {
   const atBottom = log.scrollHeight - log.clientHeight - log.scrollTop < 60;
   log.replaceChildren();
   if (!transcriptHistory.length) { const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'Les phrases traduites apparaîtront ici.'; log.appendChild(empty); }
-  for (const item of transcriptHistory) {
+  for (const item of transcriptHistory.slice(-150)) {
     const row = document.createElement('div'); row.className = 'phrase'; row.dataset.pending = String(!item.final);
     const meta = document.createElement('div'); meta.className = 'phrase-head';
     const route = document.createElement('span');
@@ -125,6 +142,7 @@ function renderHistory() {
   }
   root.querySelectorAll<HTMLElement>('[data-view]').forEach((button) => button.setAttribute('aria-pressed', String((button.dataset.view === 'both') === bilingual)));
   log.scrollTop = atBottom ? log.scrollHeight : previousScroll;
+  renderDocument();
 }
 
 function makeDraggable(element: HTMLElement, handle: HTMLElement) {
@@ -145,7 +163,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.4.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.5.0"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});
@@ -164,7 +182,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return;
   }
   if (message.type === 'overlay.show') {
-    if (String(message.text).startsWith('Connexion ')) { transcriptHistory = []; hiddenByUser = false; }
+    if (String(message.text).startsWith('Connexion ')) { transcriptHistory = []; documentOriginal = documentTranslation = undefined; hiddenByUser = false; }
+    sessionActive = true;
     ensureOverlay();
     renderHistory();
     if (!hiddenByUser) panel!.style.display = 'block';
@@ -190,7 +209,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (transcriptHistory[existing].final || revision <= transcriptHistory[existing].revision) return;
       transcriptHistory[existing] = item;
     } else transcriptHistory.push(item);
-    if (transcriptHistory.length > 150) transcriptHistory.shift();
     setNotice(''); renderHistory();
   }
   if (message.type === 'overlay.hide') { if (panel) panel.style.display = 'none'; }
@@ -201,6 +219,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if ((message.type === 'overlay.stopped' || message.type === 'overlay.error') && root) {
     stopCaptions?.();
+    sessionActive = false;
     transcriptHistory.forEach((item) => { if (!item.final) { item.final = true; item.bounded = true; } });
     renderHistory();
     root.querySelector<HTMLElement>('[data-status]')!.textContent = 'Traduction arrêtée';
@@ -245,17 +264,50 @@ function srtTime(seconds: number) {
   const ms = Math.max(0, Math.round(seconds * 1000));
   return `${String(Math.floor(ms / 3600000)).padStart(2,'0')}:${String(Math.floor(ms / 60000) % 60).padStart(2,'0')}:${String(Math.floor(ms / 1000) % 60).padStart(2,'0')},${String(ms % 1000).padStart(3,'0')}`;
 }
+function renderDocument() {
+  if (!root) return;
+  const rows = transcriptHistory.filter(item => item.final);
+  root.querySelector('[data-document-count]')!.textContent = `${rows.length} phrase(s) finalisée(s)`;
+  const pane = root.querySelector<HTMLElement>('.document')!;
+  if (pane.hidden) return;
+  const original = root.querySelector<HTMLTextAreaElement>('#document-original')!;
+  const translation = root.querySelector<HTMLTextAreaElement>('#document-translation')!;
+  original.readOnly = translation.readOnly = sessionActive;
+  original.value = documentOriginal ?? rows.map(item => item.original).join('\n\n');
+  translation.value = documentTranslation ?? rows.map(item => item.translation || '[Traduction indisponible]').join('\n\n');
+  root.querySelector('[data-document-note]')!.textContent = sessionActive
+    ? 'Texte finalisé disponible pendant la lecture. Arrêtez la traduction pour relire et retoucher le document complet.'
+    : 'Relisez et corrigez les deux textes avant l’export TXT. Les erreurs ne sont pas corrigées automatiquement. Retouches conservées dans cette page uniquement.';
+}
+function downloadText(text: string, extension: string, label: string) {
+  const url = URL.createObjectURL(new Blob([text], {type: 'text/plain;charset=utf-8'}));
+  const link = document.createElement('a'); link.href = url; link.download = `Polyglot-${label}-${new Date().toISOString().replace(/[:.]/g,'-')}.${extension}`; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportDocument() {
+  const format = root!.querySelector<HTMLSelectElement>('#document-format')!.value;
+  if (format === 'srt') { exportTranscript('srt'); return; }
+  const rows = transcriptHistory.filter(item => item.final);
+  if (!rows.length) { setDocumentNotice('Aucune phrase finalisée à exporter.'); return; }
+  const original = documentOriginal ?? rows.map(item => item.original).join('\n\n');
+  const translation = documentTranslation ?? rows.map(item => item.translation || '[Traduction indisponible]').join('\n\n');
+  const text = format === 'original' ? original : format === 'translation' ? translation : `TEXTE ORIGINAL\n\n${original}\n\nTRADUCTION\n\n${translation}`;
+  downloadText(text, 'txt', format);
+  setDocumentNotice('Transcription complète exportée en TXT, avec vos retouches.');
+}
+function setDocumentNotice(text: string) {
+  setNotice(text);
+  if (root && !root.querySelector<HTMLElement>('.document')!.hidden) root.querySelector('[data-document-note]')!.textContent = text;
+}
 function exportTranscript(format: string) {
   const rows = transcriptHistory.filter(item => item.final);
-  if (!rows.length) { setNotice('Aucune phrase finalisée à exporter.'); return; }
+  if (!rows.length) { setDocumentNotice('Aucune phrase finalisée à exporter.'); return; }
   const timed = rows.filter(item => Number.isFinite(item.start) && Number.isFinite(item.end) && item.end! > item.start!).sort((a,b) => a.start! - b.start!);
   const text = format === 'srt' ? timed.map((item,index) => `${index + 1}\n${srtTime(item.start!)} --> ${srtTime(item.end!)}\n${(item.translation || item.original).replace(/\n\s*\n/g, '\n')}`).join('\n\n') + '\n'
     : rows.map(item => `${item.original}\n${item.translation}${item.corrected ? '\n[Correction personnelle]' : ''}`).join('\n\n');
-  if (format === 'srt' && !timed.length) { setNotice('Aucun repère temporel à exporter.'); return; }
-  const url = URL.createObjectURL(new Blob([text], {type: 'text/plain;charset=utf-8'}));
-  const link = document.createElement('a'); link.href = url; link.download = `Polyglot-${new Date().toISOString().replace(/[:.]/g,'-')}.${format}`; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  setNotice(format === 'srt' ? 'SRT exporté. Audio : repères relatifs à la capture, à ajuster pour la vidéo.' : 'Historique TXT exporté.');
+  if (format === 'srt' && !timed.length) { setDocumentNotice('Aucun repère temporel à exporter.'); return; }
+  downloadText(text, format, 'session');
+  setDocumentNotice(format === 'srt' ? 'SRT exporté avec les corrections par phrase. Les retouches du document complet concernent les TXT seulement. Audio : repères à ajuster pour la vidéo.' : 'Historique complet TXT exporté avec les corrections par phrase.');
 }
 let captionVideo: HTMLVideoElement | null = null;
 function startCaptions(source: string): {ok: boolean; error?: string} {

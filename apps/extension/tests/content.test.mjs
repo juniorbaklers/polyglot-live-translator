@@ -14,7 +14,7 @@ function setup(html='<body></body>') {
 }
 const tick=async()=>{for(let i=0;i<20;i++) await Promise.resolve();};
 test('révisions, texte sécurisé et repères d’incertitude dans l’interface livrée',async()=>{
- const {dom,receive,root}=setup();await tick();
+ const {dom,w,receive,root}=setup();await tick();
  receive({type:'overlay.subtitle',id:'x',revision:1,final:false,original:'Hello QGIS <img>',translation:'<script>bad</script>',uncertainWords:['QGIS']});
  assert.equal(root.querySelector('mark').textContent,'QGIS');assert.equal(root.querySelector('.translation').children.length,0);
  receive({type:'overlay.subtitle',id:'x',revision:2,final:true,original:'Hello QGIS.',translation:'Bonjour QGIS.'});
@@ -22,7 +22,15 @@ test('révisions, texte sécurisé et repères d’incertitude dans l’interfac
  receive({type:'overlay.subtitle',id:'x',revision:1,final:false,original:'old',translation:'ancien'});
  assert.equal(root.querySelector('.translation').textContent,'Bonjour QGIS.');
  for(let i=0;i<151;i++) receive({type:'overlay.subtitle',id:`row-${i}`,revision:1,final:true,original:`Source ${i}`,translation:`Texte ${i}`});
- assert.equal(root.querySelectorAll('.phrase').length,150);dom.window.close();
+ assert.equal(root.querySelectorAll('.phrase').length,150);
+ // L’affichage est limité, mais l’export conserve aussi les premières phrases.
+ let blob;w.URL.createObjectURL=value=>{blob=value;return 'blob:local'};w.URL.revokeObjectURL=()=>{};
+ w.HTMLAnchorElement.prototype.click=function(){};
+ receive({type:'overlay.subtitle',id:'x',revision:1,final:false,original:'obsolete',translation:'ancien'});
+ root.querySelector('[data-export=txt]').click();
+ const reader=new w.FileReader();const text=new Promise(resolve=>{reader.onload=()=>resolve(reader.result);});reader.readAsText(blob);
+ const content=await text;assert.match(content,/Bonjour QGIS/);assert.match(content,/Source 0/);assert.match(content,/Texte 150/);assert.doesNotMatch(content,/obsolete/);
+ dom.window.close();
 });
 test('corriger une phrase finalisée transmet sa paire de langues et actualise l’affichage',async()=>{
  const {dom,receive,root,messages}=setup();await tick();
@@ -60,7 +68,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.4.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.5.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -68,5 +76,32 @@ test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant 
  receive({type:'overlay.reveal',active:false});assert.equal(root.querySelector('[data-stop]').disabled,true);assert.equal(root.querySelector('[data-status]').textContent,'Prêt à traduire');
  // Une seconde injection ne crée pas un deuxième écouteur ou un panneau supplémentaire.
  dom.window.eval(compiled);assert.equal(receive({type:'overlay.ping'}).ok,true);assert.equal(dom.window.document.querySelectorAll('#polyglot-live-subtitles').length,1);
+ dom.window.close();
+});
+
+test('document complet : finalisation, retouches TXT, SRT par phrase et nouvelle session',async()=>{
+ const {dom,w,receive,root}=setup();await tick();
+ let blob,download;
+ w.URL.createObjectURL=value=>{blob=value;return 'blob:local'};w.URL.revokeObjectURL=()=>{};
+ w.HTMLAnchorElement.prototype.click=function(){download=this.download;};
+ const read=()=>new Promise(resolve=>{const reader=new w.FileReader();reader.onload=()=>resolve(reader.result);reader.readAsText(blob);});
+ receive({type:'overlay.subtitle',id:'a',revision:1,final:true,original:'A map',translation:'Une carte',start:0,end:2,sourceLanguage:'en',targetLanguage:'fr'});
+ root.querySelector('.phrase .tools button').click();
+ root.querySelectorAll('.editor textarea')[1].value='Une carte corrigée.';
+ root.querySelector('.editor button').click();await tick();
+ receive({type:'overlay.subtitle',id:'b',revision:1,final:false,original:'Last words',translation:'Derniers mots',start:2,end:4});
+ root.querySelector('[data-document]').click();
+ const original=root.querySelector('#document-original'),translation=root.querySelector('#document-translation');
+ assert.equal(translation.readOnly,true);assert.equal(translation.value,'Une carte corrigée.');
+ receive({type:'overlay.stopped'});assert.equal(translation.readOnly,false);assert.match(translation.value,/Derniers mots/);
+ original.value='Texte original relu.';original.dispatchEvent(new w.Event('input'));
+ translation.value='Une traduction complète relue. <img>';translation.dispatchEvent(new w.Event('input'));
+ root.querySelector('[data-document-close]').click();root.querySelector('[data-document]').click();assert.equal(translation.value,'Une traduction complète relue. <img>');
+ root.querySelector('#document-format').value='bilingual';root.querySelector('[data-document-export]').click();
+ assert.match(download,/bilingual.*\.txt$/);const complete=await read();assert.match(complete,/Texte original relu/);assert.match(complete,/traduction complète relue/);
+ root.querySelector('#document-format').value='srt';root.querySelector('[data-document-export]').click();
+ const srt=await read();assert.match(srt,/Une carte corrigée/);assert.match(srt,/Derniers mots/);assert.doesNotMatch(srt,/complète relue/);
+ receive({type:'overlay.show',text:'Connexion au moteur local…'});assert.equal(translation.value,'');assert.equal(original.value,'');assert.equal(translation.readOnly,true);
+ root.querySelector('[data-document-export]').click();assert.match(root.querySelector('[data-document-note]').textContent,/Aucune phrase/);
  dom.window.close();
 });

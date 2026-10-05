@@ -35,5 +35,5 @@ def package(output):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Extension_Premium_V8.zip')
+    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Transcription_Complete_V9.zip')
     package(parser.parse_args().output)
