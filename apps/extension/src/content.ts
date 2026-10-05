@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.12.0") return;
-scope.__polyglotContentVersion = "1.12.0";
+if (scope.__polyglotContentVersion === "1.13.0") return;
+scope.__polyglotContentVersion = "1.13.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -174,7 +174,7 @@ function renderHistory() {
     const row = document.createElement('div'); row.className = 'phrase'; row.dataset.pending = String(!item.final);
     const meta = document.createElement('div'); meta.className = 'phrase-head';
     const route = document.createElement('span');
-    const names: Record<string,string> = {en:'Anglais',fr:'Français',es:'Espagnol'};
+    const names: Record<string,string> = {en:'Anglais',fr:'Français',es:'Espagnol',zh:'Chinois simplifié'};
     route.textContent = item.sourceLanguage && item.targetLanguage ? `${names[item.sourceLanguage] ?? item.sourceLanguage} → ${names[item.targetLanguage] ?? item.targetLanguage}` : 'Traduction';
     const stateLabel = document.createElement('span'); stateLabel.className = 'state-label';
     const review = Boolean(item.bounded || item.uncertainWords?.length);
@@ -249,7 +249,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.12.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.13.0"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});
@@ -444,7 +444,7 @@ function startCaptions(source: string): {ok: boolean; error?: string} {
   const initial = choose();
   if (!initial) return {ok: false, error: 'Activez les sous-titres du lecteur et choisissez leur langue originale.'};
   const language = initial.language.split('-')[0] || source;
-  if (!['en','fr','es'].includes(source === 'auto' ? language : source)) return {ok: false, error: 'Choisissez Anglais, Français ou Espagnol comme langue originale.'};
+  if (!['en','fr','es','zh'].includes(source === 'auto' ? language : source)) return {ok: false, error: 'Choisissez Anglais, Français, Espagnol ou Chinois simplifié comme langue originale.'};
   captionVideo = video;
   const seen = new Set<string>();
   let stopped = false, busy = false;

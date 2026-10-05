@@ -1,7 +1,22 @@
 """Installation initiale uniquement : télécharge les modèles libres nécessaires."""
 from pathlib import Path
+from languages import LANGUAGES, MODEL_PAIRS, SAMPLE_TEXTS
 
 ROOT = Path(__file__).resolve().parent
+
+
+def install_translation_models(packages):
+    packages.update_package_index()
+    available = packages.get_available_packages()
+    installed = {(p.from_code, p.to_code) for p in packages.get_installed_packages()}
+    for source, target in MODEL_PAIRS:
+        if (source, target) in installed:
+            continue
+        package = next((p for p in available if p.from_code == source and p.to_code == target), None)
+        if package is None:
+            raise RuntimeError(f"Modèle {source} → {target} indisponible dans le catalogue Argos.")
+        print(f"Téléchargement : {source} → {target}", flush=True)
+        packages.install_from_path(package.download())
 
 
 def main():
@@ -17,23 +32,13 @@ def main():
         print(f"Téléchargement du modèle de transcription Whisper {name}…", flush=True)
         WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=profile.threads,
                      download_root=str(ROOT / "models"))
-    print("Installation des traductions anglais / français / espagnol…", flush=True)
-    argostranslate.package.update_package_index()
-    available = argostranslate.package.get_available_packages()
-    installed = {(p.from_code, p.to_code) for p in argostranslate.package.get_installed_packages()}
-    for source, target in [("en", "fr"), ("fr", "en"), ("en", "es"), ("es", "en")]:
-        if (source, target) in installed:
-            continue
-        package = next((p for p in available if p.from_code == source and p.to_code == target), None)
-        if package is None:
-            raise RuntimeError(f"Modèle {source} → {target} indisponible dans le catalogue Argos.")
-        print(f"Téléchargement : {source} → {target}", flush=True)
-        argostranslate.package.install_from_path(package.download())
+    print("Installation des traductions anglais / français / espagnol / chinois simplifié…", flush=True)
+    install_translation_models(argostranslate.package)
     from engine import LocalEngine
     engine = LocalEngine()
     # Précharge aussi les détecteurs de phrases et les traductions par langue pivot.
-    for source, text in [("en", "Hello, welcome."), ("fr", "Bonjour, bienvenue."), ("es", "Hola, bienvenido.")]:
-        for target in {"en", "fr", "es"} - {source}:
+    for source, text in SAMPLE_TEXTS.items():
+        for target in LANGUAGES - {source}:
             translator = engine.languages[source].get_translation(engine.languages[target])
             if translator is None:
                 raise RuntimeError(f"Traduction {source} → {target} non installée")

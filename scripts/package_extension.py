@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE_FILES = ["contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
+ENGINE_FILES = ["languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
 
 
 def package(output, extension_only=False):
@@ -38,7 +38,7 @@ def package(output, extension_only=False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Contexte_V17.zip')
+    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Chinois_V18.zip')
     parser.add_argument("--extension-only", action="store_true")
     args = parser.parse_args()
     package(args.output, args.extension_only)

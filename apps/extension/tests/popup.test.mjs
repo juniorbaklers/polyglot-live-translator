@@ -29,3 +29,13 @@ test('ancien code enregistré ignoré ; affichage indépendant du moteur',async(
  document.querySelector('#capture').click();await tick();assert.equal(sent.at(-1).type,'capture.start');
  document.querySelector('#reveal').click();await tick();assert.equal(sent.at(-1).type,'overlay.reveal');dom.window.close();
 });
+
+test('chinois simplifié : choix source/cible, restauration et persistance',async()=>{
+ const {dom,document,local}=await setup({sourceLanguage:'zh',targetLanguage:'fr'});
+ assert.equal(document.querySelector('#source').value,'zh');
+ assert.equal(document.querySelector('#target option[value="zh"]').textContent,'Chinois simplifié');
+ document.querySelector('#source').value='en';document.querySelector('#target').value='zh';
+ document.querySelector('#capture').click();await tick();
+ assert.equal(local.sourceLanguage,'en');assert.equal(local.targetLanguage,'zh');
+ dom.window.close();
+});

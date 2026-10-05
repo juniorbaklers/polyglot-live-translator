@@ -63,7 +63,7 @@ class CaptionBuffer:
             else:
                 previous['text'] += ' ' + text
             previous['end'] = max(previous['end'], end)
-        complete = bool(re.search(r'[.!?](?:["”»])?$', self.pending['text']))
+        complete = bool(re.search(r'[.!?。！？](?:["”»])?$', self.pending['text']))
         bounded = self.pending['end'] - self.pending['start'] >= 12
         events.append(self.result(complete or bounded, bounded=bounded and not complete))
         if complete or bounded:

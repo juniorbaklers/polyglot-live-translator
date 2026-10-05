@@ -10,6 +10,7 @@ import re
 from caption_buffer import CaptionBuffer
 from startup import single_instance
 from preferences import validate_preferences
+from languages import LANGUAGES
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
@@ -58,8 +59,10 @@ class LocalService:
                     if kind == "session.start":
                         options = message.get("options", {})
                         source, target = options.get("sourceLanguage", "auto"), options.get("targetLanguage", "fr")
-                        if source not in {"auto", "en", "fr", "es"} or target not in {"en", "fr", "es"}:
-                            raise ValueError("Langues installées : anglais, français, espagnol")
+                        if source not in (LANGUAGES | {"auto"}) or target not in LANGUAGES:
+                            raise ValueError("Langues installées : anglais, français, espagnol, chinois simplifié")
+                        if hasattr(self.engine, "require_languages"):
+                            self.engine.require_languages(source, target)
                         input_mode = options.get("inputMode", "audio")
                         if input_mode not in {"audio", "captions"}:
                             raise ValueError("Mode d’entrée invalide")
@@ -86,7 +89,7 @@ class LocalService:
                         start, end = message.get("start"), message.get("end")
                         if not isinstance(text, str) or not text.strip() or len(text) > 4000:
                             raise ValueError("Sous-titre vide ou trop long")
-                        if language not in {"en", "fr", "es"}:
+                        if language not in LANGUAGES:
                             raise ValueError("Choisissez la langue originale des sous-titres")
                         if any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) for value in (start, end)) or not 0 <= start < end:
                             raise ValueError("Repères de sous-titres invalides")

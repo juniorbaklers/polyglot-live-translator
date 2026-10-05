@@ -21,7 +21,7 @@ class RecognitionTests(unittest.TestCase):
         self.translator = Mock()
         self.translator.hypotheses.side_effect = lambda text, **kwargs: [SimpleNamespace(value="Traduit : " + text)]
         self.engine.languages = {code: SimpleNamespace(get_translation=lambda _: self.translator)
-                                 for code in ("en", "fr", "es")}
+                                 for code in ("en", "fr", "es", "zh")}
 
     def recognize(self, text, end, language="en", probability=0.9, words=None):
         self.engine.model.transcribe.return_value = (
@@ -176,6 +176,36 @@ class RecognitionTests(unittest.TestCase):
         self.engine.audio_decoder = lambda *args, **kwargs: np.full(48000, 1e-7, dtype=np.float32)
         self.feed('Quiet words', 2.95)
         self.engine.model.transcribe.assert_called_once()
+
+    def test_chinese_auto_detection_pause_and_uncertainty(self):
+        self.recognize('这是地图。', 2.0, language='zh',
+                       words=[SimpleNamespace(word='地图', end=2.0, probability=.3)])
+        result = self.engine.process(b'audio', 'auto', 'fr')[0]
+        self.assertTrue(result['final'])
+        self.assertFalse(result['bounded'])
+        self.assertEqual(result['sourceLanguage'], 'zh')
+        self.assertEqual(result['uncertainWords'], ['地图'])
+        self.assertEqual(self.engine.detected_language, 'zh')
+
+    def test_chinese_stable_prefix_without_spaces_keeps_next_phrase(self):
+        def word(text, end): return SimpleNamespace(word=text, end=end)
+        self.recognize('这是地图。下一', 2.95, language='zh',
+                       words=[word('这是', .6), word('地图。', 1.3), word('下一', 2.95)])
+        first = self.engine.process(b'audio', 'zh', 'fr')[0]
+        self.recognize('这是地图。下一句话', 5.95, language='zh',
+                       words=[word('这是', .6), word('地图。', 1.3), word('下一', 2.95), word('句话', 5.95)])
+        events = self.engine.process(b'audio', 'zh', 'fr')
+        self.assertEqual(events[0]['id'], first['id'])
+        self.assertTrue(events[0]['final'])
+        self.assertEqual(events[0]['original'], '这是地图。')
+        self.assertEqual(events[1]['original'], '下一句话')
+        self.assertFalse(events[1]['final'])
+
+    def test_missing_chinese_models_gives_installation_instruction(self):
+        del self.engine.languages['zh']
+        with self.assertRaisesRegex(ValueError, 'INSTALLER.cmd'):
+            self.engine.process(b'audio', 'zh', 'fr')
+        self.assertEqual(self.feed('Still supported.', 2.0)[0]['sourceLanguage'], 'en')
 
 
 if __name__ == "__main__":

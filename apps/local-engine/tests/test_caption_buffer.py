@@ -59,3 +59,11 @@ class CaptionTests(unittest.TestCase):
         self.buffer.process('cart', 'en', 'fr', 0, 3)
         result = self.buffer.process('art', 'en', 'fr', 1, 4)[0]
         self.assertEqual(result['original'], 'cart art')
+
+    def test_chinese_caption_finalizes_at_ideographic_punctuation(self):
+        first = self.buffer.process('你好', 'zh', 'fr', 0, 2)[0]
+        final = self.buffer.process('欢迎。', 'zh', 'fr', 2, 4)[0]
+        self.assertFalse(first['final'])
+        self.assertEqual(final['id'], first['id'])
+        self.assertTrue(final['final'])
+        self.assertFalse(final['bounded'])

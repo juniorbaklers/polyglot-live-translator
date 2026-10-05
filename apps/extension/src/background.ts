@@ -35,7 +35,7 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.12.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.13.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
@@ -142,7 +142,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       if (!_sender.tab) throw new Error("Correction disponible depuis les sous-titres");
       const item = message.correction;
-      if (!item || !["en", "fr", "es"].includes(item.source) || !["en", "fr", "es"].includes(item.target) ||
+      if (!item || !["en", "fr", "es", "zh"].includes(item.source) || !["en", "fr", "es", "zh"].includes(item.target) ||
           typeof item.original !== "string" || typeof item.translation !== "string" || !item.original.trim() || !item.translation.trim() || item.original.length > 2000 || item.translation.length > 2000) throw new Error("Correction invalide");
       const settings = await chrome.storage.local.get("corrections");
       const items = (settings.corrections ?? []).filter((old: typeof item) => !(old.source === item.source && old.target === item.target && old.original.trim().toLowerCase() === item.original.trim().toLowerCase()));

@@ -1,4 +1,4 @@
-POLYGLOT 1.12.0 — V17 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+POLYGLOT 1.13.0 — V18 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
 
 METTRE À JOUR L’INSTALLATION EXISTANTE
 Cette mise à jour concerne le moteur et l’extension. Suivez les étapes ci-dessous en conservant vos modèles et votre environnement.
@@ -6,9 +6,10 @@ Cette mise à jour concerne le moteur et l’extension. Suivez les étapes ci-de
 2. Décompressez l’archive.
 3. Copiez TOUS les fichiers du dossier moteur-local dans votre dossier moteur-local actuel, en remplaçant les fichiers portant le même nom.
    Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
-   caption_buffer.py et preferences.py sont nécessaires : copiez-les aussi. Le moteur et l’extension doivent être mis à jour ensemble.
+   caption_buffer.py, preferences.py, contextual_translation.py et languages.py sont nécessaires : copiez-les aussi.
+   V18 : relancez INSTALLER.cmd une fois avec Internet pour installer les modèles chinois. Le moteur et l’extension doivent être mis à jour ensemble.
 4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
-5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.12.0.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.13.0.
 6. Actualisez la page vidéo. Choisissez le démarrage automatique ci-dessous ou lancez DEMARRER.cmd / DEMARRER_PRECISION.cmd manuellement. Aucun code à saisir.
    Depuis la V13, aucun nouveau modèle ni dépendance n’est nécessaire. Depuis une version antérieure, relancez INSTALLER.cmd une fois pour installer tiny et la détection des ressources.
 
@@ -60,7 +61,7 @@ Le fichier DEVOPS.md explique les contrôles GitHub Actions, les archives et le 
 
 LIMITES
 Les tests automatiques contrôlent le protocole, l’interface et les régressions avec des modèles simulés uniquement dans les tests. Les modèles réels restent à mesurer sur votre PC. Aucun gain de précision chiffré n’est promis. La capture audio s’arrête si le moteur accumule trop d’extraits. Les premières sous-titres peuvent être corrigés à mesure que la phrase arrive. La voix attend une phrase finalisée.
-Les langues installées sont anglais, français et espagnol. Les modèles, corrections et réglages restent locaux ; aucun service payant de traduction n’est appelé.
+Les langues proposées sont anglais, français, espagnol et chinois simplifié. Pour le chinois, installer ses modèles avec INSTALLER.cmd. Les modèles, corrections et réglages restent locaux ; aucun service payant de traduction n’est appelé.
 
 ADAPTATION AUTOMATIQUE — V14
 Le moteur choisit au démarrage selon les cœurs accessibles et la RAM disponible : tiny sous 3 Gio ou moins de 3 cœurs, base pour les configurations intermédiaires, small à partir de 6 Gio disponibles et 6 cœurs si installé. Le mode précision demande small à partir de 4 Gio et 4 cœurs ; il est limité sur les petites machines. Si small manque, base puis tiny sont essayés ; le modèle léger est également essayé si le chargement manque de mémoire. L’installation ajoute small automatiquement seulement sur les machines du profil supérieur. INSTALLER_PRECISION.cmd permet de l’ajouter ultérieurement.
@@ -78,19 +79,30 @@ Depuis la V14 : mettre à jour uniquement le dossier extension, cliquer sur Rech
 DIMENSIONS DE LA FENÊTRE — V16
 Les boutons −/+ du bandeau réduisent et agrandissent la fenêtre, sans changer la taille des caractères. Dimensions choisies par ces boutons mémorisées localement et limitées à l’écran. Le coin inférieur droit permet aussi un redimensionnement manuel. Pour les caractères seulement : Paramètres → Taille du texte. Mise à jour extension seulement depuis la V14, comme pour la V15.
 
-MISE À JOUR V17 / 1.12.0 DEPUIS V14 À V16
+MISE À JOUR V18 / 1.13.0 DEPUIS V14 À V17
 1. Arrêtez la traduction et exportez les textes à conserver.
 2. Copiez les fichiers du dossier extension dans votre dossier extension existant.
 3. Copiez les fichiers du dossier moteur-local dans votre dossier moteur-local existant,
    en remplaçant les fichiers proposés. Conservez vos dossiers models et .venv.
-   Nouveau fichier nécessaire : contextual_translation.py. Aucun modèle à télécharger.
+   Fichiers nécessaires : contextual_translation.py et languages.py. Pour ajouter le chinois, relancez INSTALLER.cmd avec Internet après avoir copié les fichiers du moteur. Les modèles déjà présents sont conservés.
    Conservez une copie de VOCABULAIRE.txt si vous l'avez personnalisé.
 4. Redémarrez le moteur. Avec le démarrage automatique déjà actif : redémarrez Windows.
    Pour un lancement manuel, fermez l'ancien moteur puis ouvrez DEMARRER.cmd.
-5. Dans chrome://extensions ou edge://extensions : Recharger. Version attendue : 1.12.0.
+5. Dans chrome://extensions ou edge://extensions : Recharger. Version attendue : 1.13.0.
 6. Actualisez la vidéo puis démarrez la traduction.
 La fenêtre conserve ses boutons de taille, son historique et ses exports. Provisoire indique
 une ligne encore modifiable par le moteur ; Finalisée indique la fin du traitement de ce
 passage, sans garantir que sa traduction est exacte.
 La reprise contextuelle est une première version locale : comparez ses résultats sur vos
 vidéos. Aucun moteur cloud, clé API ou paiement n'est nécessaire.
+
+UTILISER LE CHINOIS — V18
+Après installation des modèles et redémarrage du moteur :
+- Vidéo en mandarin : Langue de la vidéo → Chinois simplifié ; Traduire en → Français.
+- Traduction vers le chinois : choisissez Chinois simplifié dans Traduire en.
+- Automatique peut reconnaître le mandarin ; sélectionnez zh explicitement si la détection se trompe.
+- Français et espagnol ↔ chinois passent par l’anglais, ce qui peut être plus lent et
+  transmettre des erreurs d’une traduction à l’autre. Le contexte direct ne s’applique
+  pas à ces routes intermédiaires. Qualité à vérifier sur vos vidéos.
+- Le chinois traditionnel et tous les dialectes ne sont pas pris en charge séparément.
+- Aucun code ni abonnement. Internet nécessaire à l’installation ; traduction locale ensuite.

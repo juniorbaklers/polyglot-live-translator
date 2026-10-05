@@ -25,7 +25,7 @@ présentent pas l’identifiant du moteur local gratuit.
 
 ## Fonctions disponibles
 
-- Transcription et traduction réelles pour anglais, français et espagnol.
+- Transcription et traduction réelles pour anglais, français, espagnol et chinois simplifié (mandarin pour l’audio).
 - Détection automatique de ces langues, ou langue source explicitement choisie.
 - Sous-titres, voix locale, ou les deux ; choix modifiable pendant la capture.
 - Fenêtre sombre, déplaçable, redimensionnable et historique visible des 150 dernières phrases et transcription complète de la session.
@@ -161,3 +161,23 @@ et après le calcul ; il ne peut pas interrompre l'encodage, donc ce n'est pas u
 de latence maximale. Les modèles restent les modèles de phrases Argos : le gain de qualité
 et la vitesse doivent être mesurés sur des vidéos réelles, et ne sont pas encore validés.
 Aucun service en ligne ni abonnement n'a été ajouté.
+
+### Chinois simplifié (1.13.0)
+
+Le chinois (`zh`) est proposé comme langue source et cible. INSTALLER.cmd ajoute les
+modèles Argos anglais → chinois et chinois → anglais, puis vérifie les routes entre
+les quatre langues. Les routes français ↔ chinois et espagnol ↔ chinois passent par
+l’anglais : deux traductions successives, gain de qualité non garanti et reprise
+contextuelle directe V17 non appliquée aux routes via pivot. Whisper conserve ses
+modèles multilingues existants ; la qualité de reconnaissance du mandarin dépend
+notamment du modèle chargé, du son et du locuteur. Le chinois traditionnel (`zt`) et
+la reconnaissance fiable de tous les dialectes chinois ne sont pas annoncés.
+
+Ponctuation 。！？ prise en charge pour segmenter et finaliser les phrases ; comparaison
+stable des préfixes et repérage d’incertitude adaptés aux caractères han sans espaces.
+Pistes zh-Hans/zh-CN reconnues, correction locale autorisée pour zh, segmentation en
+mots du quiz chinois avec Intl.Segmenter. Les sorties exportées conservent Unicode.
+Sans modèles chinois installés, le moteur conserve les autres langues et explique de
+relancer INSTALLER.cmd si le chinois est demandé. Aucun abonnement ni API ajouté.
+Les tests utilisent des doubles du moteur : modèles chinois réels et latence restent
+à mesurer après installation, sans promesse de précision chiffrée.

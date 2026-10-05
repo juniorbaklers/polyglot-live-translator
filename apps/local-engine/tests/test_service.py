@@ -59,6 +59,23 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             await self.send(socket,{"type":"session.stop","token":token})
             self.assertEqual((await self.receive(socket))["state"],"stopped")
 
+    async def test_chinese_source_and_target_are_transported_over_real_socket(self):
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type":"session.start","token":token,"options":{"sourceLanguage":"en","targetLanguage":"zh"}})
+            self.assertEqual((await self.receive(socket))["state"], "capturing")
+            await self.send(socket, {"type":"audio.chunk","token":token,"data":base64.b64encode(b"audio").decode()})
+            await self.receive(socket); await self.receive(socket)
+            self.assertEqual(self.engine.calls[-1], (b"audio", "en", "zh"))
+            await self.send(socket, {"type":"session.start","token":token,"options":{"sourceLanguage":"zh","targetLanguage":"fr","inputMode":"captions"}})
+            await self.receive(socket)
+            await self.send(socket, {"type":"text.chunk","token":token,"text":"你好。","language":"zh","start":0,"end":2})
+            result = await self.receive(socket)
+            self.assertTrue(result['final'])
+            self.assertEqual(result['sourceLanguage'], 'zh')
+            self.assertEqual(self.engine.calls[-1], ('你好。', 'zh', 'fr'))
+            await self.receive(socket)
+
     async def test_caption_mode_translates_text_without_audio_and_preserves_video_times(self):
         async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)

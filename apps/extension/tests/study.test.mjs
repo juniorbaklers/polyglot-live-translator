@@ -20,3 +20,11 @@ test('texte insuffisant : aucune question fictive et aucune sortie pour du texte
  assert.deepEqual(generateStudyAid('Bonjour.').questions,[]);
  assert.deepEqual(generateStudyAid('[Traduction indisponible]').questions,[]);
 });
+
+test('texte chinois : segmentation en mots et questions issues du texte',()=>{
+ const text='地理信息系统可以分析城市中的空间数据。卫星图像能够帮助研究人员观察森林变化。';
+ const aid=generateStudyAid(text);
+ assert.ok(aid.summary.length>0);assert.ok(aid.questions.length>0);
+ for(const q of aid.questions){assert.ok(text.includes(q.source));assert.equal(q.prompt.replace('____',q.answer),q.source);assert.ok(q.answer.length<q.source.length);}
+ assert.equal(normalizeAnswer('空间数据。'),normalizeAnswer('空间数据'));
+});

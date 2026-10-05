@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.12.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.13.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -197,4 +197,16 @@ test('taille enregistrée : restauration, limites et écran réduit',async()=>{
  Object.defineProperties(w,{innerWidth:{value:300,configurable:true},innerHeight:{value:260,configurable:true}});w.dispatchEvent(new w.Event('resize'));
  assert.equal(host.style.width,'284px');assert.equal(host.style.height,'244px');
  assert.equal(host.style.left,'8px');assert.equal(host.style.top,'8px');dom.window.close();
+});
+
+test('piste chinoise zh-Hans : détection automatique et affichage Unicode',async()=>{
+ const {dom,w,receive,messages,root}=setup('<body><video></video></body>');await tick();
+ const video=w.document.querySelector('video');
+ const track=new w.EventTarget();Object.assign(track,{kind:'subtitles',mode:'showing',language:'zh-Hans',activeCues:[{text:'你好，欢迎。',startTime:0,endTime:2}]});
+ Object.defineProperty(video,'textTracks',{value:[track]});Object.defineProperty(video,'paused',{value:false});
+ assert.equal(receive({type:'captions.start',sourceLanguage:'auto'}).ok,true);await tick();
+ const cue=messages.find(m=>m.type==='caption.cue');assert.equal(cue.cue.language,'zh');assert.equal(cue.cue.text,'你好，欢迎。');
+ receive({type:'overlay.subtitle',id:'zh',revision:1,final:true,original:'Hello.',translation:'你好。',sourceLanguage:'en',targetLanguage:'zh'});
+ assert.equal(root.querySelector('.translation').textContent,'你好。');assert.match(root.querySelector('.phrase-head').textContent,/Chinois simplifié/);
+ receive({type:'captions.stop'});dom.window.close();
 });

@@ -5,6 +5,7 @@ import re
 import uuid
 from collections import OrderedDict
 from contextual_translation import contextual_translation
+from languages import LANGUAGES, BASE_PAIRS
 from preferences import DOMAINS, normalized, validate_preferences
 from pathlib import Path
 from resources import detect_resources, choose_profile, load_model
@@ -14,7 +15,12 @@ os.environ["ARGOS_DEVICE_TYPE"] = "cpu"
 os.environ["ARGOS_CHUNK_TYPE"] = "STANZA"
 
 ROOT = Path(__file__).resolve().parent
-LANGUAGES = {"en", "fr", "es"}
+
+
+def recognition_tokens(text):
+    # Les caractères han ne sont pas séparés par des espaces. Ce découpage
+    # sert à comparer les préfixes reconnus et signaler les mots incertains.
+    return re.findall(r"[\u3400-\u9fff]|[^\W_\u3400-\u9fff]+", text.casefold())
 
 
 class LocalSentenceSplitter:
@@ -28,7 +34,7 @@ class LocalSentenceSplitter:
         self.pkg = pkg
 
     def split_sentences(self, text):
-        return [part.strip() for part in re.split(r'(?<=[.!?])\s+', text) if part.strip()]
+        return [part.strip() for part in re.split(r'(?<=[。！？])\s*|(?<=[.!?])\s+', text) if part.strip()]
 
 
 def configure_local_translation(module):
@@ -61,7 +67,7 @@ class LocalEngine:
         self.configure_session({})
         self.reset_session()
         self.languages = {item.code: item for item in self.translate_module.get_installed_languages()}
-        for source, target in [("en", "fr"), ("fr", "en"), ("en", "es"), ("es", "en")]:
+        for source, target in BASE_PAIRS:
             if source not in self.languages or target not in self.languages:
                 raise RuntimeError("Modèles de traduction manquants. Relancez INSTALLER.cmd.")
             if self.languages[source].get_translation(self.languages[target]) is None:
@@ -92,7 +98,15 @@ class LocalEngine:
         self.segment_number = 0
         self.revision = 0
 
+    def require_languages(self, source, target):
+        codes = {target} | ({source} if source != "auto" else set())
+        if not codes <= self.languages.keys():
+            raise ValueError("Modèle de langue manquant. Pour le chinois, relancez INSTALLER.cmd avec Internet, puis redémarrez le moteur.")
+        if source != "auto" and source != target and self.languages[source].get_translation(self.languages[target]) is None:
+            raise ValueError("Traduction non installée. Relancez INSTALLER.cmd puis redémarrez le moteur.")
+
     def translate_text(self, text, language, target, final=False):
+        self.require_languages(language, target)
         pair = (language, target)
         if pair != self.translation_pair:
             self.reset_translation_context()
@@ -146,8 +160,8 @@ class LocalEngine:
 
     def result(self, original, language, target, final, bounded=False):
         self.revision += 1
-        tokens = set(re.findall(r"\w+", original.casefold()))
-        uncertain = [word for word in self.uncertain_words if tokens.intersection(re.findall(r"\w+", word.casefold()))]
+        tokens = set(recognition_tokens(original))
+        uncertain = [word for word in self.uncertain_words if tokens.intersection(recognition_tokens(word))]
         translated = self.translate_text(original, language, target, final=final)
         if final:
             self.remember_translation(original, translated, language, target, bounded, uncertain)
@@ -169,7 +183,8 @@ class LocalEngine:
         """Réévalue une fenêtre audio courte ; les mises à jour partagent un ID."""
         import numpy as np
         if source not in LANGUAGES | {"auto"} or target not in LANGUAGES:
-            raise ValueError("Cette version prend en charge anglais, français et espagnol.")
+            raise ValueError("Langues prises en charge : anglais, français, espagnol et chinois simplifié.")
+        self.require_languages(source, target)
         if source != self.last_source:
             self.reset_session()
             self.last_source = source
@@ -220,7 +235,7 @@ class LocalEngine:
         # Finaliser après une pause audible, plutôt qu'à chaque ponctuation ajoutée
         # artificiellement par Whisper à la fin d'un petit fichier audio.
         silence = duration - last_end
-        has_ending = bool(re.search(r'[.!?](?:["”»])?$', original))
+        has_ending = bool(re.search(r'[.!?。！？](?:["”»])?$', original))
         # Une petite pause au milieu d'une phrase non ponctuée conserve la fenêtre
         # afin que la traduction suivante puisse utiliser la suite du propos.
         paused = silence >= 0.7 and has_ending
@@ -233,13 +248,13 @@ class LocalEngine:
             return [event]
         # Une phrase ponctuée et stable dans deux reconnaissances successives peut
         # être finalisée sans attendre que le locuteur fasse une pause.
-        normalized_previous = re.findall(r"\w+", self.last_text.casefold())
+        normalized_previous = recognition_tokens(self.last_text)
         cut = None
         for index, word in enumerate(words):
-            if not re.search(r'[.!?](?:["”»])?$', word.word.strip()):
+            if not re.search(r'[.!?。！？](?:["”»])?$', word.word.strip()):
                 continue
             prefix = "".join(item.word for item in words[:index + 1]).strip()
-            tokens = re.findall(r"\w+", prefix.casefold())
+            tokens = recognition_tokens(prefix)
             if tokens and normalized_previous[:len(tokens)] == tokens and word.end <= self.last_duration - 0.25:
                 cut = (index, prefix, word.end)
         events = []

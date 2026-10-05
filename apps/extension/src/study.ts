@@ -6,8 +6,15 @@ const ignored = new Set((
   'le la les un une des du de dans sur sous pour par avec sans ce cet cette ces cela ceci est sont était être avoir avons vous nous ils elles leur leurs aux ses son sa mes tes vos nos que qui quoi quand comme donc alors mais plus moins très bien ainsi aussi tout tous toute toutes fait faire peut peux cette entre chaque autre mêmes même dont depuis après avant ' +
   'el la los las un una unos unas del en de con sin por para sobre este esta estos estas ese esa esos esas que quien cuando donde como pero porque más menos muy también todo todos toda todas sus su nos vosotros nosotros ellas ellos son está están ser estar haber tiene tienen puede hacer'
 ).split(/\s+/));
-const tokenize = (text: string) => Array.from(text.matchAll(/\p{L}[\p{L}\p{N}’'-]*/gu), m => ({word:m[0], index:m.index!, key:m[0].toLocaleLowerCase()}));
-export const normalizeAnswer = (text: string) => text.trim().toLocaleLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[.!?]+$/,'');
+const tokenize = (text: string) => {
+  if (/\p{Script=Han}/u.test(text)) {
+    const segmenter = new Intl.Segmenter('zh', {granularity:'word'});
+    return Array.from(segmenter.segment(text)).filter(part => part.isWordLike)
+      .map(part => ({word:part.segment, index:part.index, key:part.segment.toLocaleLowerCase()}));
+  }
+  return Array.from(text.matchAll(/\p{L}[\p{L}\p{N}’'-]*/gu), m => ({word:m[0], index:m.index!, key:m[0].toLocaleLowerCase()}));
+};
+export const normalizeAnswer = (text: string) => text.trim().toLocaleLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[.!?。！？]+$/,'');
 export function generateStudyAid(text: string): StudyAid {
   const segmenter = new Intl.Segmenter(undefined, {granularity:'sentence'});
   const seen = new Set<string>();
@@ -16,7 +23,7 @@ export function generateStudyAid(text: string): StudyAid {
     if (!sentence || seen.has(key) || sentence === '[Traduction indisponible]') return false;
     seen.add(key); return true;
   });
-  const terms = sentences.map(sentence => tokenize(sentence).filter(t => t.word.length >= 4 && !ignored.has(t.key)));
+  const terms = sentences.map(sentence => tokenize(sentence).filter(t => t.word.length >= (/\p{Script=Han}/u.test(t.word) ? 2 : 4) && !ignored.has(t.key)));
   const frequency = new Map<string,number>();
   const documents = new Map<string,number>();
   for (const tokens of terms) {

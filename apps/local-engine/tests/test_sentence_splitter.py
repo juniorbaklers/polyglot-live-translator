@@ -17,6 +17,10 @@ class SentenceSplitterTests(unittest.TestCase):
         self.assertEqual(splitter.split_sentences("Une phrase sans ponctuation"),
                          ["Une phrase sans ponctuation"])
 
+    def test_chinese_punctuation_without_whitespace(self):
+        self.assertEqual(LocalSentenceSplitter(None).split_sentences('你好。欢迎！准备好了吗？下一句'),
+                         ['你好。', '欢迎！', '准备好了吗？', '下一句'])
+
     def test_forces_local_segmentation_despite_user_settings(self):
         class ChunkType(Enum):
             STANZA = 3

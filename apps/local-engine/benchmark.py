@@ -26,8 +26,8 @@ def main():
     parser = argparse.ArgumentParser(description="Tester un extrait réel de 10 à 60 secondes avec une transcription humaine")
     parser.add_argument("audio", type=Path)
     parser.add_argument("reference", type=Path)
-    parser.add_argument("--source", choices=["en", "fr", "es"], required=True)
-    parser.add_argument("--target", choices=["en", "fr", "es"], default="fr")
+    parser.add_argument("--source", choices=["en", "fr", "es", "zh"], required=True)
+    parser.add_argument("--target", choices=["en", "fr", "es", "zh"], default="fr")
     parser.add_argument("--output", type=Path, default=Path("rapport-precision.json"))
     args = parser.parse_args()
     from offline_guard import enable
