@@ -137,9 +137,18 @@ class LocalEngine:
         waveform = self.audio_decoder(io.BytesIO(audio), sampling_rate=16000)
         if not len(waveform) or len(waveform) > 16000 * 12:
             raise ValueError("Extrait audio vide ou trop long ; relancez la capture.")
+        previous_window = self.window
         self.window = waveform if self.window is None else np.concatenate((self.window, waveform))
         duration = len(self.window) / 16000
         self.window_end = self.window_start + duration
+        # Un fichier entièrement nul ne contient aucune parole à reconnaître.
+        # Garder le temps capturé, finaliser le texte déjà disponible et éviter
+        # une nouvelle inférence. Une fenêtre encore non reconnue reste analysée.
+        if not np.count_nonzero(waveform) and (previous_window is None or self.last_text):
+            events = self.finish(target)
+            self.window = None
+            self.window_start = self.window_end
+            return events
         language = source if source != "auto" else self.detected_language
         prompt = " ".join(part for part in (self.vocabulary, getattr(self, "session_vocabulary", ""), self.context) if part) or None
         segments, info = self.model.transcribe(

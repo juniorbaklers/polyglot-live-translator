@@ -64,7 +64,7 @@ test('réafficher injecte le contenu absent et garde la session avec une fenêtr
  chrome.tabs.get=async()=>({id:7,url:'https://video.example'});
  chrome.tabs.update=async()=>({});
  chrome.scripting={executeScript:async options=>{assert.deepEqual(options.files,['content.js']);injected=true;}};
- chrome.tabs.sendMessage=async(tab,message)=>{calls.push(message);if(message.type==='overlay.ping'){if(!injected)throw new Error('Receiving end does not exist');return{ok:true,version:'1.6.0'};}return{ok:true};};
+ chrome.tabs.sendMessage=async(tab,message)=>{calls.push(message);if(message.type==='overlay.ping'){if(!injected)throw new Error('Receiving end does not exist');return{ok:true,version:'1.6.1'};}return{ok:true};};
  const result=await request({type:'overlay.reveal',tabId:7});
  assert.equal(result.ok,true);assert.equal(injected,true);assert.equal(local.outputMode,'both');assert.equal(state.activeCapture.outputMode,'both');
  assert.equal(calls.at(-1).type,'overlay.reveal');assert.equal(calls.at(-1).active,true);

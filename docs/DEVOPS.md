@@ -12,7 +12,7 @@ Ces tests vérifient les comportements logiciels. Les doubles des modèles IA n�
 
 1. Dans GitHub, ouvrir le dépôt puis **Actions**.
 2. Ouvrir **Extension quality and package**, puis une exécution verte correspondant au commit voulu.
-3. Dans **Artifacts**, télécharger **polyglot-extension-1.6.0**. L’archive GitHub contient le ZIP installable et sa somme SHA-256.
+3. Dans **Artifacts**, télécharger **polyglot-extension-1.6.1**. L’archive GitHub contient le ZIP installable et sa somme SHA-256.
 4. Décompresser puis suivre `INSTALLATION.txt`. Les modèles et `.venv` de l’installation actuelle restent en place.
 
 L’exécution manuelle est disponible quand ce workflow est présent sur la branche par défaut ; avant cela, un push sur la branche de travail déclenche ses contrôles. Aucun envoi au Chrome Web Store ni fusion automatique n’est configuré. La validation et la distribution restent des actions distinctes.

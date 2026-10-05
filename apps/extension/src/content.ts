@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.6.0") return;
-scope.__polyglotContentVersion = "1.6.0";
+if (scope.__polyglotContentVersion === "1.6.1") return;
+scope.__polyglotContentVersion = "1.6.1";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -12,6 +12,7 @@ let bilingual = false;
 let fontSize = 23;
 interface TranscriptRow { original: string; translation: string; id?: string; revision: number; final: boolean; bounded?: boolean; start?: number; end?: number; timing?: string; origin?: string; uncertainWords?: string[]; sourceLanguage?: string; targetLanguage?: string; corrected?: boolean; recognizedOriginal?: string; }
 let transcriptHistory: TranscriptRow[] = [];
+const renderedRows = new Map<TranscriptRow, {signature: string; row: HTMLElement}>();
 let sessionActive = false;
 let documentOriginal: string | undefined;
 let documentTranslation: string | undefined;
@@ -106,9 +107,15 @@ function renderHistory() {
   const log = root.querySelector<HTMLElement>('.transcript')!;
   const previousScroll = log.scrollTop;
   const atBottom = log.scrollHeight - log.clientHeight - log.scrollTop < 60;
-  log.replaceChildren();
+  const visible = transcriptHistory.slice(-150);
+  const desired: HTMLElement[] = [];
+  for (const item of renderedRows.keys()) if (!visible.includes(item)) renderedRows.delete(item);
+  if (!transcriptHistory.length) log.replaceChildren();
   if (!transcriptHistory.length) { const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'Les phrases traduites apparaîtront ici.'; log.appendChild(empty); }
-  for (const item of transcriptHistory.slice(-150)) {
+  for (const item of visible) {
+    const signature = JSON.stringify([item, bilingual]);
+    const cached = renderedRows.get(item);
+    if (cached?.signature === signature) { desired.push(cached.row); continue; }
     const row = document.createElement('div'); row.className = 'phrase'; row.dataset.pending = String(!item.final);
     const meta = document.createElement('div'); meta.className = 'phrase-head';
     const route = document.createElement('span');
@@ -116,15 +123,15 @@ function renderHistory() {
     route.textContent = item.sourceLanguage && item.targetLanguage ? `${names[item.sourceLanguage] ?? item.sourceLanguage} → ${names[item.targetLanguage] ?? item.targetLanguage}` : 'Traduction';
     const stateLabel = document.createElement('span'); stateLabel.className = 'state-label';
     const review = Boolean(item.bounded || item.uncertainWords?.length);
-    stateLabel.textContent = item.corrected ? 'Corrigée' : !item.final ? 'En cours' : review ? 'À vérifier' : 'Finalisée';
+    stateLabel.textContent = item.corrected ? 'Corrigée' : !item.final ? 'En cours' : review ? 'Finalisée · à relire' : 'Finalisée';
     stateLabel.classList.toggle('review', review || !item.final);
     meta.append(route, stateLabel); row.append(meta);
     const original = document.createElement('div'); original.className = 'original'; renderOriginal(original, item); original.hidden = !bilingual && Boolean(item.translation);
     const translation = document.createElement('div'); translation.className = 'translation'; translation.textContent = item.translation || 'Traduction indisponible pour cet extrait.';
-    row.append(original, translation); log.appendChild(row);
+    row.append(original, translation); desired.push(row); renderedRows.set(item, {signature, row});
     if (item.uncertainWords?.length) {
       const warning = document.createElement('div'); warning.className = 'note';
-      warning.textContent = `Reconnaissance à vérifier : ${item.uncertainWords.join(', ')}. Ce repère ne mesure pas la fiabilité de la traduction.`;
+      warning.textContent = `${item.final ? "Texte finalisé" : "Texte provisoire"} — reconnaissance incertaine : ${item.uncertainWords.join(', ')}. Relisez ce passage ; ce repère ne mesure pas la qualité de la traduction.`;
       row.append(warning);
     }
     if (item.corrected) { const label = document.createElement('div'); label.className = 'note'; label.textContent = 'Correction personnelle'; row.append(label); }
@@ -146,6 +153,11 @@ function renderHistory() {
       label.textContent = !item.final ? 'En cours — le texte peut être corrigé.' : 'Fin de phrase non confirmée.';
       row.appendChild(label);
     }
+  }
+  if (desired.length) {
+    const keep = new Set(desired);
+    for (const child of Array.from(log.children)) if (!keep.has(child as HTMLElement)) child.remove();
+    desired.forEach((row, index) => { if (log.children[index] !== row) log.insertBefore(row, log.children[index] ?? null); });
   }
   root.querySelectorAll<HTMLElement>('[data-view]').forEach((button) => button.setAttribute('aria-pressed', String((button.dataset.view === 'both') === bilingual)));
   log.scrollTop = atBottom ? log.scrollHeight : previousScroll;
@@ -170,7 +182,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.6.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.6.1"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});

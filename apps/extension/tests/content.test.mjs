@@ -68,7 +68,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.6.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.6.1'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -126,4 +126,15 @@ test('résumé et quiz réels : texte relu, vérification, export et invalidatio
  const reader=new w.FileReader();const text=new Promise(resolve=>{reader.onload=()=>resolve(reader.result);});reader.readAsText(blob);const exported=await text;assert.match(exported,/CORRIGÉ ET EXTRAITS/);assert.ok(exported.includes(answer));
  input.value='Texte corrigé.';input.dispatchEvent(new w.Event('input'));assert.equal(root.querySelector('.study-result').children.length,0);assert.equal(root.querySelector('[data-study-export]').hidden,true);
  dom.window.close();
+});
+
+test('rafraîchissement incrémental : conserver les lignes et la correction ouverte',async()=>{
+ const {dom,receive,root}=setup();await tick();
+ receive({type:'overlay.subtitle',id:'a',final:true,original:'A map',translation:'Une carte',uncertainWords:['map']});
+ const first=root.querySelector('.phrase');assert.equal(first.querySelector('.state-label').textContent,'Finalisée · à relire');
+ first.querySelector('.tools button').click();const editor=first.querySelector('.editor');editor.querySelector('textarea').value='Brouillon conservé';
+ receive({type:'overlay.subtitle',id:'b',revision:1,final:false,original:'Next',translation:'Suite'});
+ assert.equal(root.querySelector('.phrase'),first);assert.equal(first.querySelector('.editor'),editor);assert.equal(editor.querySelector('textarea').value,'Brouillon conservé');
+ receive({type:'overlay.subtitle',id:'b',revision:2,final:true,original:'Next sentence',translation:'Phrase suivante'});
+ assert.equal(root.querySelector('.phrase'),first);assert.equal(root.querySelectorAll('.phrase').length,2);dom.window.close();
 });

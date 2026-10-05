@@ -159,6 +159,24 @@ class RecognitionTests(unittest.TestCase):
         self.assertEqual(options["vad_parameters"], {"threshold": .35, "speech_pad_ms": 400})
         self.translator.hypotheses.assert_called_with("Hello", num_hypotheses=1)
 
+    def test_digital_silence_finalizes_once_without_new_model_inference(self):
+        first = self.feed('Current words', 2.95)[0]
+        self.engine.audio_decoder = lambda *args, **kwargs: np.zeros(48000, dtype=np.float32)
+        calls = self.engine.model.transcribe.call_count
+        final = self.engine.process(b'silent', 'en', 'fr')[0]
+        self.assertEqual(final['id'], first['id'])
+        self.assertTrue(final['final'])
+        self.assertEqual(self.engine.window_start, 6.0)
+        self.assertEqual(self.engine.model.transcribe.call_count, calls)
+        self.assertEqual(self.engine.process(b'silent', 'en', 'fr'), [])
+        self.assertEqual(self.engine.window_start, 9.0)
+        self.assertEqual(self.engine.model.transcribe.call_count, calls)
+
+    def test_nonzero_quiet_audio_is_still_recognized(self):
+        self.engine.audio_decoder = lambda *args, **kwargs: np.full(48000, 1e-7, dtype=np.float32)
+        self.feed('Quiet words', 2.95)
+        self.engine.model.transcribe.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
