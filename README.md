@@ -181,3 +181,22 @@ Sans modèles chinois installés, le moteur conserve les autres langues et expli
 relancer INSTALLER.cmd si le chinois est demandé. Aucun abonnement ni API ajouté.
 Les tests utilisent des doubles du moteur : modèles chinois réels et latence restent
 à mesurer après installation, sans promesse de précision chiffrée.
+
+### Essai du moteur léger — réduction des dépendances à valider
+
+Diagnostic sur l’installation Windows utilisateur : torch 506,1 Mo, spaCy 99,3 Mo,
+sympy 71,7 Mo. Le backend local_translate exécute les modèles Argos avec CTranslate2
+et les tokeniseurs Argos, sans importer translate/sbd ni torch/spaCy/Stanza. Modèles,
+segmentation, paramètres de décodage et pivots conservés ; même Whisper. Backend normal
+inchangé par défaut ; activation expérimentale par POLYGLOT_TRANSLATION_BACKEND=light.
+
+INSTALLER_LEGER.cmd crée .venv-leger et compare les sorties aux textes de contrôle
+traduits par l’ancien environnement. Il installe les dépendances minimales, puis Argos
+1.11.0 avec --no-deps pour package/tokenizer seulement. Les dépendances standard Argos
+restent déclarées dans les métadonnées et pip check les signale manquantes : profil
+sélectif Polyglot, pas installation complète standard. En cas de différence, l’essai
+échoue et DEMARRER_LEGER.cmd reste bloqué. Pas de suppression de .venv, de migration du
+raccourci Windows ou de gain disque réalisé pendant cette phase : double installation
+temporaire. Après comparaison, validation audio réelle et mesure de .venv-leger sont
+nécessaires avant promotion et retrait de l’ancien environnement. Guide :
+docs/ESSAI_MOTEUR_LEGER.txt. Modèles natifs et Windows non exécutés ici.

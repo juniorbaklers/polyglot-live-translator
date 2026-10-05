@@ -51,9 +51,14 @@ class LocalEngine:
         from faster_whisper import WhisperModel
         from faster_whisper.audio import decode_audio
         self.audio_decoder = decode_audio
-        import argostranslate.translate
-        self.translate_module = argostranslate.translate
-        configure_local_translation(self.translate_module)
+        if os.environ.get("POLYGLOT_TRANSLATION_BACKEND") == "light":
+            import local_translate
+            self.translate_module = local_translate
+            print("Traducteur léger : modèles Argos exécutés directement, sans Stanza, spaCy ni PyTorch.", flush=True)
+        else:
+            import argostranslate.translate
+            self.translate_module = argostranslate.translate
+            configure_local_translation(self.translate_module)
         resources = detect_resources()
         requested = choose_profile(resources, os.environ.get("POLYGLOT_MODE", "auto"))
         self.model, profile = load_model(WhisperModel, ROOT / "models", requested)
