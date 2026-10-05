@@ -4,7 +4,7 @@ import re
 DOMAINS = {
     "general": "",
     "informatique": "Python, JavaScript, GitHub, DevOps, API, SQL, Docker, Kubernetes",
-    "geographie": "QGIS, raster, vecteur, projection, Sentinel, Landsat, géoréférencement",
+    "geographie": "GIS, SIG, FME, ETL, QGIS, raster, vecteur, projection, Sentinel, Landsat, géoréférencement",
     "commerce": "facture, TVA, chiffre d'affaires, bilan, trésorerie, marge",
 }
 

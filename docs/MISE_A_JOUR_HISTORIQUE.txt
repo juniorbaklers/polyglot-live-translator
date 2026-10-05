@@ -1,10 +1,12 @@
-POLYGLOT 1.11.0 — V16 — TAILLE DE LA FENÊTRE ET LIGNES PRÉCÉDENTES
-Mise à jour de l’extension uniquement pour les utilisateurs de la V14 / 1.9.0 sans code.
+POLYGLOT 1.12.0 — V17 — FENÊTRE DE TRADUCTION
 1. Arrêtez la traduction et exportez les textes à conserver avant de recharger.
 2. Décompressez cette archive et copiez tout le contenu du dossier extension dans le dossier de votre extension actuelle, en remplaçant les fichiers et en conservant le sous-dossier chunks.
-3. Dans chrome://extensions ou edge://extensions, cliquez sur Recharger. Version attendue : 1.11.0.
+3. Dans chrome://extensions ou edge://extensions, cliquez sur Recharger. Version attendue : 1.12.0.
 4. Actualisez la page vidéo, puis cliquez sur Démarrer la traduction.
-Le moteur V14 peut rester installé et actif. Aucun nouveau modèle, code ou fichier à ajouter au dossier moteur-local. Si vous utilisez encore une version antérieure à la V14, installez d’abord le moteur V14 sans code.
+La reprise avec contexte nécessite le moteur V17 (engine.py, contextual_translation.py,
+caption_buffer.py, server.py et preferences.py), puis son redémarrage. Utilisez l’archive
+complète Polyglot_Contexte_V17.zip pour cette mise à jour. Conservez models, .venv et votre
+VOCABULAIRE.txt personnalisé. L’archive extension seule actualise seulement l’affichage.
 
 Lignes précédentes remonte dans le texte. La molette fonctionne aussi. Au début d’une page de 150 phrases, un nouveau clic charge des phrases plus anciennes. La traduction continue pendant la relecture sans faire descendre la fenêtre. Revenir au direct affiche les dernières phrases et réactive le défilement automatique. Le compteur +N indique les nouvelles phrases hors de la page affichée.
 Toute la transcription reste accessible dans Transcription complète et export. Une nouvelle session efface l’historique de la page : exportez avant de recommencer, actualiser ou fermer.

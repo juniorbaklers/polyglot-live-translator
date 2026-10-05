@@ -4,6 +4,7 @@ import os
 import re
 import uuid
 from collections import OrderedDict
+from contextual_translation import contextual_translation
 from preferences import DOMAINS, normalized, validate_preferences
 from pathlib import Path
 from resources import detect_resources, choose_profile, load_model
@@ -70,10 +71,13 @@ class LocalEngine:
         preferences = validate_preferences(options)
         self.session_vocabulary = ", ".join(filter(None, (DOMAINS[preferences["domain"]], preferences["glossary"])))
         self.corrections = preferences["corrections"]
+        self.reset_translation_context()
         self.translation_cache = OrderedDict()
 
     def reset_session(self):
         self.translation_cache = OrderedDict()
+        self.translation_history = []
+        self.translation_pair = None
         self.context = ""
         self.detected_language = None
         self.last_source = None
@@ -88,17 +92,29 @@ class LocalEngine:
         self.segment_number = 0
         self.revision = 0
 
-    def translate_text(self, text, language, target):
+    def translate_text(self, text, language, target, final=False):
+        pair = (language, target)
+        if pair != self.translation_pair:
+            self.reset_translation_context()
+            self.translation_pair = pair
         for item in reversed(getattr(self, "corrections", [])):
             if item["source"] == language and item["target"] == target and normalized(item["original"]) == normalized(text):
                 return item["translation"]
         if language == target:
             return text
+        translator = self.languages[language].get_translation(self.languages[target])
+        if final and self.translation_history:
+            try:
+                contextual = contextual_translation(translator, text, self.translation_history)
+            except (RuntimeError, ValueError, TypeError):
+                # Une reprise contextuelle ne doit pas interrompre la capture.
+                contextual = None
+            if contextual:
+                return contextual
         key = (text.strip(), language, target)
         if key in self.translation_cache:
             self.translation_cache.move_to_end(key)
             return self.translation_cache[key]
-        translator = self.languages[language].get_translation(self.languages[target])
         hypotheses = translator.hypotheses(text, num_hypotheses=1)
         value = hypotheses[0].value.strip() if hypotheses else ""
         # Ne pas mémoriser une absence de traduction : une révision peut réessayer.
@@ -108,13 +124,36 @@ class LocalEngine:
                 self.translation_cache.popitem(last=False)
         return value
 
+    def reset_translation_context(self):
+        self.translation_history = []
+        self.translation_pair = None
+
+    def remember_translation(self, original, translated, language, target, bounded, uncertain=()):
+        # Garder uniquement des passages terminés, courts et reconnus sans
+        # mot signalé incertain. Les fragments forcés ne deviennent pas contexte.
+        if translated and not bounded and not uncertain and language != target:
+            self.translation_history.append((original, translated))
+            self.translation_history = self.translation_history[-2:]
+            while self.translation_history and sum(len(a) + len(b) for a, b in self.translation_history) > 700:
+                self.translation_history.pop(0)
+        else:
+            self.translation_history = []
+
+    def translate_final_caption(self, text, language, target, bounded):
+        translated = self.translate_text(text, language, target, final=True)
+        self.remember_translation(text, translated, language, target, bounded)
+        return translated
+
     def result(self, original, language, target, final, bounded=False):
         self.revision += 1
         tokens = set(re.findall(r"\w+", original.casefold()))
         uncertain = [word for word in self.uncertain_words if tokens.intersection(re.findall(r"\w+", word.casefold()))]
+        translated = self.translate_text(original, language, target, final=final)
+        if final:
+            self.remember_translation(original, translated, language, target, bounded, uncertain)
         return {"id": f"{self.session_id}-{self.segment_number}",
                 "revision": self.revision, "original": original,
-                "translation": self.translate_text(original, language, target),
+                "translation": translated,
                 "final": final, "bounded": bounded, "sourceLanguage": language, "targetLanguage": target,
                 "start": self.window_start, "end": self.window_end, "timing": "capture",
                 "uncertainWords": uncertain, "origin": "audio"}

@@ -28,7 +28,9 @@ class LocalService:
         capturing = False
         source, target = "auto", "fr"
         input_mode = "audio"
-        captions = CaptionBuffer(self.engine.translate_text)
+        captions = CaptionBuffer(self.engine.translate_text,
+                                 getattr(self.engine, "translate_final_caption", None),
+                                 getattr(self.engine, "reset_translation_context", None))
         async def send(message):
             await socket.send(json.dumps(message, ensure_ascii=False))
         try:
@@ -65,7 +67,9 @@ class LocalService:
                         if hasattr(self.engine, "configure_session"):
                             self.engine.configure_session(preferences)
                         self.engine.reset_session()
-                        captions = CaptionBuffer(self.engine.translate_text)
+                        captions = CaptionBuffer(self.engine.translate_text,
+                                 getattr(self.engine, "translate_final_caption", None),
+                                 getattr(self.engine, "reset_translation_context", None))
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
                     elif kind == "session.stop":

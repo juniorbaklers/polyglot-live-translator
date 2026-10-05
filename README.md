@@ -143,3 +143,21 @@ Version 1.9.0 : connexion automatique sans code ni bouton Enregistrer. Le moteur
 Version 1.10.0 : commandes Lignes précédentes et Revenir au direct visibles au-dessus de l’historique. Relecture sans déplacement par les nouveaux sous-titres, pages de 150 lignes avec chevauchement et retour explicite au suivi en direct. Défilement manuel met en relecture. Mise à jour extension seulement depuis 1.9.0 ; moteur et protocole v5 inchangés.
 
 Version 1.11.0 : boutons −/+ pour redimensionner la fenêtre sans modifier les caractères, dimensions enregistrées localement et bornées à la taille de l’écran, repositionnement après agrandissement ou changement de viewport. Mise à jour extension uniquement depuis 1.9.0.
+
+### Traduction progressive et contexte (1.12.0)
+
+La première proposition reste traduite avec le chemin Argos habituel. À la finalisation,
+une reprise locale utilise au maximum les deux derniers passages terminés de la même
+paire de langues. Leurs traductions servent de préfixe imposé au décodeur CTranslate2 ;
+seule la continuation correspondant au nouveau passage est affichée. Aucun découpage
+approximatif du texte traduit ni substitution de phrases d'exemple n'est utilisé.
+Les fragments forcés et passages avec reconnaissance incertaine effacent ce contexte.
+Une nouvelle session, un changement de langue ou un déplacement dans la piste le réinitialisent.
+
+Cette reprise concerne les paires Argos directes avec modèle déjà chargé. Une paire via
+langue pivot, un contexte trop long, une sortie vide ou tronquée, une erreur ou le dépassement
+du budget de 0,8 s conserve la traduction normale. Le budget est contrôlé pendant le décodage
+et après le calcul ; il ne peut pas interrompre l'encodage, donc ce n'est pas une garantie
+de latence maximale. Les modèles restent les modèles de phrases Argos : le gain de qualité
+et la vitesse doivent être mesurés sur des vidéos réelles, et ne sont pas encore validés.
+Aucun service en ligne ni abonnement n'a été ajouté.

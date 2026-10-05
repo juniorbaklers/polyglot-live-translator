@@ -4,15 +4,21 @@ import uuid
 
 
 class CaptionBuffer:
-    def __init__(self, translate):
+    def __init__(self, translate, translate_final=None, reset_context=None):
         self.translate = translate
+        self.translate_final = translate_final
+        self.reset_context = reset_context
+        self.last_cue = None
         self.pending = None
 
     def result(self, final, bounded=False):
         item = self.pending
         item['revision'] += 1
+        translated = (self.translate_final(item['text'], item['language'], item['target'], bounded)
+                      if final and self.translate_final else
+                      self.translate(item['text'], item['language'], item['target']))
         return {"id": item['id'], "revision": item['revision'], "original": item['text'],
-                "translation": self.translate(item['text'], item['language'], item['target']),
+                "translation": translated,
                 "final": final, "bounded": bounded, "start": item['start'], "end": item['end'],
                 "timing": "video", "origin": "captions", "sourceLanguage": item['language'],
                 "targetLanguage": item['target'], "uncertainWords": []}
@@ -26,6 +32,14 @@ class CaptionBuffer:
 
     def process(self, text, language, target, start, end):
         events = []
+        previous = self.pending
+        if self.last_cue:
+            last_start, last_end, last_language, last_target = self.last_cue
+            if start < last_start or start - last_end > 1.0 or language != last_language or target != last_target:
+                events.extend(self.finish())
+                if self.reset_context:
+                    self.reset_context()
+        self.last_cue = (start, end, language, target)
         previous = self.pending
         if previous and (start < previous['start'] or start - previous['end'] > 1.0 or
                          language != previous['language'] or target != previous['target'] or

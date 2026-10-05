@@ -16,9 +16,11 @@ const tick=async()=>{for(let i=0;i<20;i++) await Promise.resolve();};
 test('révisions, texte sécurisé et repères d’incertitude dans l’interface livrée',async()=>{
  const {dom,w,receive,root}=setup();await tick();
  receive({type:'overlay.subtitle',id:'x',revision:1,final:false,original:'Hello QGIS <img>',translation:'<script>bad</script>',uncertainWords:['QGIS']});
+ assert.equal(root.querySelector('.state-label').textContent,'Provisoire');
  assert.equal(root.querySelector('mark').textContent,'QGIS');assert.equal(root.querySelector('.translation').children.length,0);
  receive({type:'overlay.subtitle',id:'x',revision:2,final:true,original:'Hello QGIS.',translation:'Bonjour QGIS.'});
  assert.equal(root.querySelectorAll('.phrase').length,1);
+ assert.equal(root.querySelector('.state-label').textContent,'Finalisée');
  receive({type:'overlay.subtitle',id:'x',revision:1,final:false,original:'old',translation:'ancien'});
  assert.equal(root.querySelector('.translation').textContent,'Bonjour QGIS.');
  for(let i=0;i<151;i++) receive({type:'overlay.subtitle',id:`row-${i}`,revision:1,final:true,original:`Source ${i}`,translation:`Texte ${i}`});
@@ -68,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.11.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.12.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
