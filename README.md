@@ -12,13 +12,11 @@ le nouveau moteur local sur `127.0.0.1:47833`.
 2. Dans `apps/local-engine`, lancez **INSTALLER.cmd** une seule fois avec Internet.
    Il installe les bibliothèques et télécharge les modèles libres. Ces téléchargements
    peuvent être volumineux et prendre plusieurs minutes ; aucune clé API n’est demandée.
-3. Lancez **DEMARRER.cmd** et gardez la fenêtre ouverte. Copiez le code à six chiffres
-   affiché lorsque le moteur est prêt.
+3. Lancez **DEMARRER.cmd** et gardez la fenêtre ouverte. La connexion est automatique, sans code.
 4. Compilez l’extension avec `pnpm install --frozen-lockfile`, puis `pnpm build:extension`.
    Dans `chrome://extensions`, activez **Mode développeur**, puis chargez
    `apps/extension/dist` avec **Charger l’extension non empaquetée**.
-5. Rechargez la page de votre vidéo. Dans le menu de l’extension, enregistrez le code,
-   choisissez les langues et le mode, puis lancez la capture.
+5. Rechargez la page de votre vidéo. Dans le menu de l’extension, choisissez les langues et le mode, puis lancez la capture.
 
 L’application Windows Tauri historique n’est plus nécessaire pour l’extension.
 Une ancienne application Windows déjà installée n’est pas modifiée par ce code source.
@@ -124,7 +122,7 @@ https://github.com/argosopentech/argos-translate.
 
 ## Extension 1.7.0 et DevOps
 
-Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v4).
+Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v5).
 
 La version 1.7.0 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
 
@@ -139,3 +137,5 @@ Version 1.7.0 : rendu incrémental des 150 lignes visibles, conservation des bro
 Version 1.7.0 : démarrage Windows facultatif via ACTIVER_DEMARRAGE_AUTO.cmd (ou variante précision). Un raccourci par utilisateur lance pythonw.exe et launcher.py sans console au login ; le code d’association est persistant et le verrou évite les instances concurrentes dans le même dossier. Désactivation et affichage du code disponibles. Journal rotatif limité à 1 Mo plus une sauvegarde, sans code d’association. Conserver le chemin du moteur ; réactiver après déplacement. Une capture vidéo exige toujours une action utilisateur dans Chrome. La fermeture de la session arrête le moteur. Les appels payants restent désactivés.
 
 Version 1.8.0 : profil de reconnaissance choisi au démarrage selon les cœurs accessibles et la mémoire disponible. tiny/base/small locaux, limites prudentes pour précision, repli sur modèle installé plus léger si mémoire insuffisante au chargement. Installation tiny et base, small automatique sur les configurations supérieures. Pas de téléchargement en fonctionnement, pas de changement du traducteur Argos, pas de promesse de compatibilité universelle ou de temps réel sur tout CPU. Voir INSTALLATION_EXTENSION.txt pour seuils et mise à jour.
+
+Version 1.9.0 : connexion automatique sans code ni bouton Enregistrer. Le moteur et l’extension ne lisent plus les anciens codes. Origine chrome-extension exigée et vérifiée contre l’identifiant déclaré ; pages web et origine absente refusées, jeton aléatoire lié à chaque connexion, une seule session à la fois. Protocole v5 : mettre à jour les deux parties et redémarrer l’ancien moteur. Les anciennes descriptions du code concernent les versions historiques.

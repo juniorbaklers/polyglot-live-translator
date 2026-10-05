@@ -15,17 +15,17 @@ async function setup(settings={}) {
  return{dom,local,session,sent,document:dom.window.document};
 }
 async function tick(){for(let i=0;i<30;i++)await Promise.resolve();}
-test('commandes essentielles avant les réglages avancés, démarrage avec code enregistré automatiquement',async()=>{
+test('commandes essentielles et démarrage direct sans code',async()=>{
  const {dom,document,local,sent}=await setup();
  assert.equal(document.querySelector('#advanced').open,false);
  assert.ok(document.querySelector('#capture').compareDocumentPosition(document.querySelector('#advanced')) & 4);
- document.querySelector('#code').value='123456';document.querySelector('#source').value='en';
+ assert.equal(document.querySelector('#code'), null);assert.equal(document.querySelector('#pair'), null);document.querySelector('#source').value='en';
  document.querySelector('#capture').click();await tick();
- assert.equal(local.pairingCode,'123456');assert.equal(local.sourceLanguage,'en');
+assert.equal(local.sourceLanguage,'en');
  assert.equal(sent.at(-1).type,'capture.start');assert.equal(document.querySelector('#capture').textContent,'Arrêter la traduction');dom.window.close();
 });
-test('code absent : explication visible et aucune capture ; affichage indépendant du moteur',async()=>{
- const {dom,document,sent}=await setup();
- document.querySelector('#capture').click();await tick();assert.equal(sent.length,0);assert.match(document.querySelector('#state').textContent,/6 chiffres/);
- document.querySelector('#reveal').click();await tick();assert.equal(sent.at(-1).type,'overlay.reveal');assert.match(document.querySelector('#state').textContent,/Démarrer/);dom.window.close();
+test('ancien code enregistré ignoré ; affichage indépendant du moteur',async()=>{
+ const {dom,document,sent}=await setup({pairingCode:'ancien'});
+ document.querySelector('#capture').click();await tick();assert.equal(sent.at(-1).type,'capture.start');
+ document.querySelector('#reveal').click();await tick();assert.equal(sent.at(-1).type,'overlay.reveal');dom.window.close();
 });

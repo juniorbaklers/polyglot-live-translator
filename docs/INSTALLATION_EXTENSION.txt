@@ -1,16 +1,16 @@
-POLYGLOT 1.8.0 — V13 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+POLYGLOT 1.9.0 — V14 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
 
 METTRE À JOUR L’INSTALLATION EXISTANTE
 Cette mise à jour concerne le moteur et l’extension. Suivez les étapes ci-dessous en conservant vos modèles et votre environnement.
-1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd.
+1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd. Si le moteur tourne en arrière-plan, lancez DESACTIVER_DEMARRAGE_AUTO.cmd puis fermez et rouvrez votre session Windows avant de remplacer les fichiers. Enregistrez votre travail auparavant.
 2. Décompressez l’archive.
 3. Copiez TOUS les fichiers du dossier moteur-local dans votre dossier moteur-local actuel, en remplaçant les fichiers portant le même nom.
    Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
    caption_buffer.py et preferences.py sont nécessaires : copiez-les aussi. Le moteur et l’extension doivent être mis à jour ensemble.
 4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
-5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.8.0.
-6. Actualisez la page vidéo. Choisissez le démarrage automatique ci-dessous ou lancez DEMARRER.cmd / DEMARRER_PRECISION.cmd manuellement. Enregistrez le code une fois.
-   Relancez INSTALLER.cmd une fois : il ajoute la dépendance de détection et le modèle léger tiny, sans supprimer vos modèles existants.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.9.0.
+6. Actualisez la page vidéo. Choisissez le démarrage automatique ci-dessous ou lancez DEMARRER.cmd / DEMARRER_PRECISION.cmd manuellement. Aucun code à saisir.
+   Depuis la V13, aucun nouveau modèle ni dépendance n’est nécessaire. Depuis une version antérieure, relancez INSTALLER.cmd une fois pour installer tiny et la détection des ressources.
 
 PREMIÈRE INSTALLATION
 Installez Python 3.11 64 bits avec son lanceur py, puis double-cliquez sur moteur-local/INSTALLER.cmd. Internet est nécessaire pour télécharger les dépendances et les modèles.
@@ -20,15 +20,15 @@ Modèle small facultatif : INSTALLER_PRECISION.cmd, puis DEMARRER_PRECISION.cmd.
 DÉMARRAGE AUTOMATIQUE WINDOWS — À ACTIVER UNE FOIS
 Après mise à jour, fermez l’ancien moteur CMD avant de commencer. Gardez moteur-local dans son dossier définitif, pas à l’intérieur du ZIP.
 1. Double-cliquez sur ACTIVER_DEMARRAGE_AUTO.cmd dans moteur-local. Il ajoute un raccourci Polyglot Local au démarrage de votre compte Windows et demande le lancement du moteur sans console. Aucun droit administrateur requis.
-2. Saisissez dans l’extension le code affiché, puis Enregistrer. Ce code est désormais conservé dans .association-code et ne change plus à chaque lancement. Ne partagez pas ce fichier. AFFICHER_CODE.cmd permet de retrouver le code.
+2. Aucun code ni bouton Enregistrer : l’extension se connecte directement au moteur local.
 3. Ensuite, à chaque ouverture de session Windows, le moteur démarre en arrière-plan. Attendez le chargement des modèles, ouvrez la vidéo et cliquez sur Démarrer dans l’extension. Chrome impose une action de l’utilisateur pour autoriser la capture de l’onglet : elle ne démarre pas silencieusement à chaque vidéo.
 4. DESACTIVER_DEMARRAGE_AUTO.cmd retire le raccourci. Le moteur déjà lancé continue jusqu’à la fermeture de votre session Windows. Pour arrêter un moteur en arrière-plan, fermez votre session ou terminez le processus pythonw.exe correspondant à ce dossier via le Gestionnaire des tâches ; n’arrêtez pas les autres programmes Python.
-5. Si le moteur ne répond pas, consultez moteur-auto.log ou désactivez l’automatisme, fermez votre session Windows puis utilisez DEMARRER.cmd pour voir les erreurs. Conservez .venv, models, .association-code et votre vocabulaire lors des mises à jour. Si vous déplacez le dossier moteur-local, relancez l’activation pour corriger le raccourci.
+5. Si le moteur ne répond pas, consultez moteur-auto.log ou désactivez l’automatisme, fermez votre session Windows puis utilisez DEMARRER.cmd pour voir les erreurs. Conservez .venv, models et votre vocabulaire lors des mises à jour. Si vous déplacez le dossier moteur-local, relancez l’activation pour corriger le raccourci.
 Option précision : après INSTALLER_PRECISION.cmd, utilisez ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd à la place du lanceur normal. Pour changer un moteur déjà actif, fermez puis rouvrez votre session Windows ; le nouveau mode sera appliqué au prochain démarrage. Le mode précision peut être plus lent.
-Le verrou local empêche deux nouvelles instances dans le même dossier. Le service reste limité à 127.0.0.1, avec association et jeton de session. Aucun paiement ni téléchargement pendant l’utilisation.
+Le verrou local empêche deux nouvelles instances dans le même dossier. Le service reste limité à 127.0.0.1, avec contrôle des origines des extensions et jeton de session. Aucun paiement ni téléchargement pendant l’utilisation.
 
 DÉMARRER ET AFFICHER LA FENÊTRE
-Saisissez le code du moteur, choisissez les langues et Fenêtre de traduction, puis cliquez sur Démarrer la traduction. Le code est enregistré automatiquement.
+Choisissez les langues et Fenêtre de traduction, puis cliquez sur Démarrer la traduction. La connexion au moteur est automatique.
 Si la fenêtre a été masquée, cliquez sur Afficher la fenêtre de traduction : l’historique est conservé. En mode voix seule, ce bouton active aussi l’affichage des sous-titres.
 Les options de vocabulaire, domaines et pistes sont repliées dans Réglages avancés — facultatifs. Aucun réglage avancé n’est nécessaire pour traduire l’audio.
 
@@ -62,7 +62,11 @@ LIMITES
 Les tests automatiques contrôlent le protocole, l’interface et les régressions avec des modèles simulés uniquement dans les tests. Les modèles réels restent à mesurer sur votre PC. Aucun gain de précision chiffré n’est promis. La capture audio s’arrête si le moteur accumule trop d’extraits. Les premières sous-titres peuvent être corrigés à mesure que la phrase arrive. La voix attend une phrase finalisée.
 Les langues installées sont anglais, français et espagnol. Les modèles, corrections et réglages restent locaux ; aucun service payant de traduction n’est appelé.
 
-ADAPTATION AUTOMATIQUE — V13
+ADAPTATION AUTOMATIQUE — V14
 Le moteur choisit au démarrage selon les cœurs accessibles et la RAM disponible : tiny sous 3 Gio ou moins de 3 cœurs, base pour les configurations intermédiaires, small à partir de 6 Gio disponibles et 6 cœurs si installé. Le mode précision demande small à partir de 4 Gio et 4 cœurs ; il est limité sur les petites machines. Si small manque, base puis tiny sont essayés ; le modèle léger est également essayé si le chargement manque de mémoire. L’installation ajoute small automatiquement seulement sur les machines du profil supérieur. INSTALLER_PRECISION.cmd permet de l’ajouter ultérieurement.
 Les seuils sont prudents, pas un benchmark de vitesse. Le profil reste fixe pendant la session : fermer des applications et relancer le moteur pour refaire la détection. Aucun plafond strict de RAM ni amélioration automatique du document final n’est ajouté. Le moteur de traduction Argos reste inchangé. Les vieux processeurs incompatibles avec les bibliothèques, Windows 32 bits et une RAM insuffisante ne sont pas garantis.
-Si le moteur est en arrière-plan : désactivez son démarrage, fermez puis rouvrez la session Windows avant de remplacer les fichiers ; relancez INSTALLER.cmd et réactivez ACTIVER_DEMARRAGE_AUTO.cmd. Ne supprimez ni models, ni .venv, ni le code d’association.
+Si le moteur est en arrière-plan : désactivez son démarrage, fermez puis rouvrez la session Windows avant de remplacer les fichiers ; relancez INSTALLER.cmd et réactivez ACTIVER_DEMARRAGE_AUTO.cmd. Ne supprimez ni models ni .venv.
+
+CONNEXION SANS CODE — V14
+Le champ du code et le bouton d’enregistrement sont supprimés. Les anciens codes ne sont plus lus par le moteur ou l’extension. Moteur et extension 1.9.0 doivent être mis à jour ensemble, puis le moteur actif doit être redémarré. Un moteur ancien qui demande encore un code déclenche un message de mise à jour, pas un champ de saisie. AFFICHER_CODE.cmd n’est plus livré ni nécessaire ; une ancienne copie affiche simplement que le code n’est plus requis.
+Le service écoute uniquement 127.0.0.1 et refuse les pages web ordinaires, les origines absentes et les identifiants d’extension ne correspondant pas à l’origine. Un jeton aléatoire est créé par connexion et une seule connexion de traduction est acceptée simultanément. Ce contrôle ne remplace pas un secret face à un autre programme local capable de fabriquer une origine ou à une autre extension : seules des extensions de confiance doivent être installées. Le site web n’obtient pas l’audio ; Chrome exige toujours un clic utilisateur pour la capture.

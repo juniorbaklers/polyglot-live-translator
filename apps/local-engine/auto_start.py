@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from startup import ROOT, load_pairing_code
+from startup import ROOT
 
 
 def ps_quote(value):
@@ -32,14 +32,13 @@ def install(precision=False):
     pythonw = ROOT / '.venv/Scripts/pythonw.exe'
     if not pythonw.is_file():
         raise RuntimeError('Lancez INSTALLER.cmd dans ce dossier avant d’activer le démarrage automatique.')
-    code = load_pairing_code()
     link = shortcut_path(); link.parent.mkdir(parents=True, exist_ok=True)
     create_shortcut(link, pythonw, ROOT, precision)
     subprocess.Popen([str(pythonw), str(ROOT / 'launcher.py')] + (['--precision'] if precision else []), cwd=ROOT)
     print('Démarrage automatique activé pour votre compte Windows, sans fenêtre CMD.')
     if precision: print('Mode précision : le modèle small doit avoir été installé avec INSTALLER_PRECISION.cmd.')
     print('Démarrage du moteur demandé. Le chargement des modèles peut prendre un moment.')
-    print(f'Code à enregistrer UNE FOIS dans l’extension : {code}')
+    print('Connexion automatique : cliquez sur Démarrer dans l’extension, sans code.')
     print('Gardez ce dossier à cet emplacement. Consultez moteur-auto.log si le moteur ne répond pas.')
 
 
@@ -47,7 +46,7 @@ def main():
     parser = argparse.ArgumentParser(); parser.add_argument('action', choices=['install','remove','code']); parser.add_argument('--precision', action='store_true')
     args = parser.parse_args()
     if args.action == 'code':
-        print(f'Code d’association conservé : {load_pairing_code()}'); return
+        print('Aucun code requis. Cliquez sur Démarrer la traduction dans l’extension 1.9.0.'); return
     if sys.platform != 'win32': raise RuntimeError('Cette commande concerne Windows uniquement.')
     if args.action == 'install': install(args.precision)
     else:

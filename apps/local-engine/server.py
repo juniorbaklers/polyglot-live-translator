@@ -6,20 +6,21 @@ import json
 import secrets
 import time
 import math
+import re
 from caption_buffer import CaptionBuffer
-from startup import load_pairing_code, single_instance
+from startup import single_instance
 from preferences import validate_preferences
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v4"
+ENGINE_ID = "polyglot-local-free-v5"
+EXTENSION_ORIGIN = re.compile(r"chrome-extension://[a-p]{32}")
 MAX_AUDIO_BYTES = 2_000_000
 
 
 class LocalService:
-    def __init__(self, engine, code=None):
+    def __init__(self, engine):
         self.engine = engine
-        self.code = code or f"{secrets.randbelow(1_000_000):06d}"
         self.active_connection = None
 
     async def handle(self, socket):
@@ -38,8 +39,10 @@ class LocalService:
                         raise ValueError("Message invalide")
                     kind = message.get("type")
                     if kind == "pair.request":
-                        if message.get("code") != self.code or not message.get("extensionId"):
-                            await send({"type": "pair.rejected", "reason": "Code d’association incorrect"})
+                        origin = socket.request.headers.get("Origin", "")
+                        extension_id = message.get("extensionId")
+                        if not EXTENSION_ORIGIN.fullmatch(origin) or origin != f"chrome-extension://{extension_id}":
+                            await send({"type": "pair.rejected", "reason": "Connexion réservée aux extensions locales compatibles"})
                             continue
                         if self.active_connection not in (None, socket):
                             await send({"type": "pair.rejected", "reason": "Un autre onglet est déjà associé"})
@@ -126,13 +129,12 @@ async def serve_local():
     enable()
     from engine import LocalEngine
     print("Chargement des modèles locaux…", flush=True)
-    service = LocalService(LocalEngine(), code=load_pairing_code())
-    # Origin absent accepté pour les clients locaux ; les pages web ordinaires sont refusées.
-    import re
+    service = LocalService(LocalEngine())
+    # Sans code : aucune page web et aucun client sans Origin ne sont acceptés.
     async with serve(service.handle, HOST, PORT,
-                     origins=[None, re.compile(r"chrome-extension://[a-p]{32}")],
+                     origins=[EXTENSION_ORIGIN],
                      max_size=3_000_000, max_queue=4, compression=None):
-        print(f"\nPOLYGLOT LOCAL — PRÊT\nCode d’association : {service.code}\n"
+        print(f"\nPOLYGLOT LOCAL — PRÊT\nConnexion automatique à l’extension, sans code.\n"
               "Transcription et traduction locales. Aucun appel à une API payante.\n"
               "Lanceur manuel : gardez cette fenêtre ouverte. Ctrl+C pour arrêter.\n", flush=True)
         await asyncio.Future()

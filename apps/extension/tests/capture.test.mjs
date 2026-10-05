@@ -9,13 +9,14 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v4';
+  static engine='polyglot-local-free-v5';
+  static rejectCode=false;
   readyState=0;
   sent=[];
   constructor(url){super();this.url=url;sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.dispatchEvent(new Event('open'));});}
   reply(data){queueMicrotask(()=>this.dispatchEvent(new MessageEvent('message',{data:JSON.stringify(data)})));}
   send(raw){const message=JSON.parse(raw);this.sent.push(message);
-    if(message.type==='pair.request')this.reply({type:'pair.accepted',token:'local-token',engine:LocalSocket.engine});
+    if(message.type==='pair.request')this.reply(LocalSocket.rejectCode ? {type:'pair.rejected',reason:'Code d’association incorrect'} : {type:'pair.accepted',token:'local-token',engine:LocalSocket.engine});
     if(message.type==='session.start')this.reply({type:'state',state:'capturing'});
     if(message.type==='audio.chunk'||message.type==='text.chunk')this.reply({type:'audio.ack',sequence:message.sequence});
     if(message.type==='session.stop')this.reply({type:'state',state:'stopped'});
@@ -49,8 +50,9 @@ function request(message){return new Promise(resolve=>listener(message,{},resolv
 
 test('capturer en fichiers indépendants puis arrêter toutes les ressources',async t=>{
  await configure(t);
- const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{pairingCode:'123456'}});
+ const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{}});
  assert.equal(result.ok,true);assert.equal(sockets[0].url,'ws://127.0.0.1:47833');
+ const handshake=sockets[0].sent.find(message=>message.type==='pair.request');assert.ok(handshake);assert.equal('code' in handshake,false);
  for(let i=0;i<2;i++){
    const [id,timer]=[...timers].find(([,timer])=>timer.delay===3000);timers.delete(id);timer.fn();await flush();
  }
@@ -71,7 +73,7 @@ test('traduire une piste textuelle sans démarrer le microphone ou MediaRecorder
  t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
  let mediaCalls=0; navigator.mediaDevices.getUserMedia=async()=>{mediaCalls++;throw new Error('Pas de capture audio attendue');};
  const before=recorders.length;
- const start=await request({type:'offscreen.start',target:'offscreen',tabId:7,settings:{pairingCode:'123456',inputMode:'captions',sourceLanguage:'en',domain:'geographie',glossary:'QGIS'}});
+ const start=await request({type:'offscreen.start',target:'offscreen',tabId:7,settings:{inputMode:'captions',sourceLanguage:'en',domain:'geographie',glossary:'QGIS'}});
  assert.equal(start.ok,true);assert.equal(mediaCalls,0);assert.equal(recorders.length,before);
  const ws=sockets.at(-1);
  assert.equal(ws.sent.find(m=>m.type==='session.start').options.glossary,'QGIS');
@@ -88,8 +90,18 @@ test('refuser un ancien serveur ou fournisseur sans identifiant gratuit',async t
  t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
  LocalSocket.engine='paid-or-old-service';
  const count=recorders.length;
- const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{pairingCode:'123456'}});
+ const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{}});
  assert.equal(result.ok,false);assert.equal(recorders.length,count);
  assert.equal(sockets.at(-1).sent.some(message=>message.type==='session.start'),false);
  assert.equal(messages.at(-1).type,'capture.failed');
+});
+
+test('ancien moteur demandant un code : instruction de mise à jour et aucune session',async t=>{
+ t.mock.method(globalThis,'setTimeout',(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;});
+ t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
+ LocalSocket.rejectCode=true;
+ const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,settings:{inputMode:'captions'}});
+ assert.equal(result.ok,false);assert.match(result.error,/ancien moteur.*code/);
+ assert.equal(sockets.at(-1).sent.some(message=>message.type==='session.start'),false);
+ LocalSocket.rejectCode=false;
 });

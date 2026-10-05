@@ -35,7 +35,7 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.8.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.9.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
@@ -46,7 +46,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
       await ensureContent(message.tabId);
       await ensureOffscreenDocument();
-      const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections"]);
+      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections"]);
       const streamId = settings.inputMode === "captions" ? "" : await new Promise<string>((resolve, reject) => {
         chrome.tabCapture.getMediaStreamId({ targetTabId: message.tabId }, (id) => {
           if (chrome.runtime.lastError || !id) reject(new Error(chrome.runtime.lastError?.message ?? "Flux audio indisponible"));

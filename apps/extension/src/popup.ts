@@ -3,11 +3,9 @@ import { outputMode } from "./output";
 const state = document.querySelector<HTMLDivElement>("#state")!;
 const capture = document.querySelector<HTMLButtonElement>("#capture")!;
 const reveal = document.querySelector<HTMLButtonElement>("#reveal")!;
-const pair = document.querySelector<HTMLButtonElement>("#pair")!;
 const output = document.querySelector<HTMLSelectElement>("#output")!;
 const source = document.querySelector<HTMLSelectElement>("#source")!;
 const target = document.querySelector<HTMLSelectElement>("#target")!;
-const codeInput = document.querySelector<HTMLInputElement>("#code")!;
 const inputMode = document.querySelector<HTMLSelectElement>("#input-mode")!;
 const domain = document.querySelector<HTMLSelectElement>("#domain")!;
 const glossary = document.querySelector<HTMLTextAreaElement>("#glossary")!;
@@ -24,9 +22,8 @@ function updateButton() {
 
 capture.disabled = output.disabled = reveal.disabled = true;
 async function restore() {
-  const settings = await chrome.storage.local.get(["pairingCode", "sourceLanguage", "targetLanguage", "outputMode", ...preferenceKeys]);
+  const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", ...preferenceKeys]);
   const { activeCapture, captureError } = await chrome.storage.session.get(["activeCapture", "captureError"]);
-  codeInput.value = settings.pairingCode ?? "";
   source.value = settings.sourceLanguage ?? "auto";
   target.value = settings.targetLanguage ?? "fr";
   inputMode.value = settings.inputMode ?? "audio";
@@ -37,7 +34,7 @@ async function restore() {
   capturing = Boolean(activeCapture);
   captureTabId = activeCapture?.tabId;
   updateButton();
-  showState(capturing ? "Traduction active. Utilisez Afficher la fenêtre si elle est masquée." : captureError ?? "Moteur automatique activé ? Cliquez sur Démarrer. Sinon, lancez DEMARRER.cmd et enregistrez son code une fois.", Boolean(captureError));
+  showState(capturing ? "Traduction active. Utilisez Afficher la fenêtre si elle est masquée." : captureError ?? "Moteur automatique activé ? Cliquez sur Démarrer. Sinon, lancez DEMARRER.cmd.", Boolean(captureError));
 }
 restore().catch((error) => { state.textContent = String(error); }).finally(() => {
   capture.disabled = output.disabled = reveal.disabled = false;
@@ -64,13 +61,6 @@ output.addEventListener("change", async () => {
   } catch (error) { state.textContent = String(error); }
 });
 
-pair.addEventListener("click", async () => {
-  const code = codeInput.value.trim();
-  if (!/^\d{6}$/.test(code)) { state.textContent = "Saisissez le code à 6 chiffres."; return; }
-  await chrome.storage.local.set({ pairingCode: code });
-  state.textContent = "Code enregistré — connexion locale en attente";
-});
-
 capture.addEventListener("click", async () => {
   capture.disabled = true;
   const starting = !capturing;
@@ -79,10 +69,8 @@ capture.addEventListener("click", async () => {
     const tabId = starting ? tab?.id : captureTabId;
     if (tabId === undefined) throw new Error("Onglet actif introuvable.");
     if (starting) {
-      const code = codeInput.value.trim();
-      if (!/^\d{6}$/.test(code)) throw new Error("Saisissez le code à 6 chiffres affiché dans DEMARRER.cmd.");
       showState("Ouverture de la fenêtre et connexion au moteur…");
-      await chrome.storage.local.set({ pairingCode: code, sourceLanguage: source.value, targetLanguage: target.value, outputMode: outputMode(output.value), inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim() });
+      await chrome.storage.local.set({ sourceLanguage: source.value, targetLanguage: target.value, outputMode: outputMode(output.value), inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim() });
     }
     const response = await chrome.runtime.sendMessage({ type: starting ? "capture.start" : "capture.stop", tabId });
     if (!response?.ok) throw new Error(response?.error ?? "La capture n’a pas démarré");

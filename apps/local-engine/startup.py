@@ -1,25 +1,9 @@
-"""Association persistante et verrou local partagé par les deux lanceurs."""
+"""Verrou local partagé par les deux lanceurs."""
 import os
-import secrets
 from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-
-
-def load_pairing_code(root=ROOT):
-    path = Path(root) / '.association-code'
-    try:
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        pass
-    else:
-        with os.fdopen(descriptor, 'w', encoding='ascii') as file:
-            file.write(f'{secrets.randbelow(1_000_000):06d}')
-    code = path.read_text(encoding='ascii').strip()
-    if len(code) != 6 or not code.isascii() or not code.isdecimal():
-        raise ValueError('Code local invalide. Arrêtez le moteur, supprimez .association-code puis relancez-le et associez de nouveau l’extension.')
-    return code
 
 
 @contextmanager

@@ -1,6 +1,6 @@
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v4";
+const FREE_ENGINE_ID = "polyglot-local-free-v5";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;
@@ -69,14 +69,14 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error("Le moteur ne répond pas. Si le démarrage automatique est activé, attendez son chargement et réessayez. Sinon, lancez DEMARRER.cmd.")), 15000);
     const rejectConnection = (detail: string) => { clearTimeout(timeout); reject(new Error(detail)); };
-    ws.addEventListener("error", () => rejectConnection("Moteur non connecté. Si le démarrage automatique est activé, attendez son chargement et réessayez. Sinon, lancez DEMARRER.cmd et enregistrez son code une fois."), { once: true });
+    ws.addEventListener("error", () => rejectConnection("Moteur non connecté. Si le démarrage automatique est activé, attendez son chargement et réessayez. Sinon, lancez DEMARRER.cmd."), { once: true });
     ws.addEventListener("close", () => {
       if (generation !== run) return;
       rejectConnection("Connexion au moteur local fermée.");
       fail("Connexion au moteur local fermée.");
     }, { once: true });
     ws.addEventListener("open", () => {
-      ws.send(JSON.stringify({ type: "pair.request", code: message.settings.pairingCode ?? "", extensionId: chrome.runtime.id }));
+      ws.send(JSON.stringify({ type: "pair.request", extensionId: chrome.runtime.id }));
     }, { once: true });
     ws.addEventListener("message", (event) => {
       if (generation !== run) return;
@@ -85,12 +85,13 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
         if (response.type === "pair.accepted") {
           if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Le moteur et l’extension ne sont pas compatibles. Mettez à jour leurs fichiers ensemble, puis relancez le moteur."); return; }
           token = response.token;
-          ws.send(JSON.stringify({ type: "session.start", token, options: { ...message.settings, pairingCode: undefined, outputMode: undefined, sourceLanguage: message.settings.sourceLanguage ?? "auto", targetLanguage: message.settings.targetLanguage ?? "fr" } }));
+          ws.send(JSON.stringify({ type: "session.start", token, options: { ...message.settings, outputMode: undefined, sourceLanguage: message.settings.sourceLanguage ?? "auto", targetLanguage: message.settings.targetLanguage ?? "fr" } }));
         } else if (response.type === "state" && response.state === "capturing") {
           clearTimeout(timeout);
           if (inputMode === "audio") beginSegment(run); report("● Moteur local gratuit — traduction en cours"); resolve();
         } else if (response.type === "pair.rejected" || response.type === "error") {
-          const detail = response.reason ?? response.message ?? "Erreur du moteur local";
+          const reason = response.reason ?? response.message ?? "Erreur du moteur local";
+          const detail = /code.*association/i.test(reason) ? "Un ancien moteur demande encore un code. Mettez à jour le moteur et l’extension ensemble, puis redémarrez le moteur." : reason;
           rejectConnection(detail); fail(detail);
         } else if (response.type === "subtitle") {
           const tabId = activeTabId;

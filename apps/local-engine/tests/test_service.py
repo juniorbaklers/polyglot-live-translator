@@ -6,7 +6,7 @@ import unittest
 import subprocess
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from server import LocalService, ENGINE_ID
+from server import LocalService, ENGINE_ID, EXTENSION_ORIGIN
 from websockets.asyncio.server import serve
 from websockets.asyncio.client import connect
 
@@ -27,8 +27,8 @@ class RecordingEngine:
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.engine = RecordingEngine()
-        self.service = LocalService(self.engine, code="123456")
-        self.server = await serve(self.service.handle, "127.0.0.1", 0)
+        self.service = LocalService(self.engine)
+        self.server = await serve(self.service.handle, "127.0.0.1", 0, origins=[EXTENSION_ORIGIN])
         self.url = f"ws://127.0.0.1:{self.server.sockets[0].getsockname()[1]}"
 
     async def asyncTearDown(self):
@@ -37,13 +37,13 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def send(self, socket, value): await socket.send(json.dumps(value))
     async def receive(self, socket): return json.loads(await asyncio.wait_for(socket.recv(), 3))
     async def pair(self, socket):
-        await self.send(socket, {"type":"pair.request","code":"123456","extensionId":"test-extension"})
+        await self.send(socket, {"type":"pair.request","extensionId":"a" * 32})
         response = await self.receive(socket)
         self.assertEqual(response["engine"], ENGINE_ID)
         return response["token"]
 
     async def test_real_socket_transports_audio_to_engine_and_returns_result(self):
-        async with connect(self.url) as socket:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)
             await self.send(socket, {"type":"session.start","token":token,"options":{"sourceLanguage":"en","targetLanguage":"fr"}})
             self.assertEqual((await self.receive(socket))["state"], "capturing")
@@ -60,7 +60,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await self.receive(socket))["state"],"stopped")
 
     async def test_caption_mode_translates_text_without_audio_and_preserves_video_times(self):
-        async with connect(self.url) as socket:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)
             await self.send(socket, {"type":"session.start","token":token,"options":{"inputMode":"captions","sourceLanguage":"en","targetLanguage":"fr","glossary":"QGIS"}})
             await self.receive(socket)
@@ -79,7 +79,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await self.receive(socket))['type'], 'error')
 
     async def test_caption_rejects_invalid_ranges_languages_and_oversized_preferences(self):
-        async with connect(self.url) as socket:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)
             await self.send(socket, {"type":"session.start","token":token,"options":{"glossary":"x" * 1501}})
             self.assertEqual((await self.receive(socket))['type'], 'error')
@@ -91,9 +91,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((await self.receive(socket))['type'], 'error')
             self.assertEqual(self.engine.calls, [])
 
-    async def test_reject_wrong_code_and_audio_before_pairing(self):
-        async with connect(self.url) as socket:
-            await self.send(socket,{"type":"pair.request","code":"wrong","extensionId":"test"})
+    async def test_reject_mismatched_extension_and_audio_before_connection(self):
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
+            await self.send(socket,{"type":"pair.request","extensionId":"b" * 32})
             self.assertEqual((await self.receive(socket))["type"],"pair.rejected")
             await self.send(socket,{"type":"audio.chunk","token":"x","data":"YQ=="})
             self.assertEqual((await self.receive(socket))["type"],"error")
@@ -102,7 +102,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_stop_delivers_final_revision_before_stopped_state(self):
         self.engine.finish = lambda target: [{"id": "test-phrase", "revision": 2,
             "original": "Recognized text.", "translation": "Texte traduit.", "final": True}]
-        async with connect(self.url) as socket:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)
             await self.send(socket, {"type": "session.start", "token": token, "options": {"sourceLanguage": "en", "targetLanguage": "fr"}})
             await self.receive(socket)
@@ -117,24 +117,40 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await self.receive(socket))["state"], "stopped")
 
     async def test_reject_invalid_audio_and_stale_token(self):
-        async with connect(self.url) as socket:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token=await self.pair(socket)
             await self.send(socket,{"type":"session.start","token":token,"options":{}});await self.receive(socket)
             await self.send(socket,{"type":"audio.chunk","token":token,"data":"!!!"})
             self.assertEqual((await self.receive(socket))["type"],"error")
-        async with connect(self.url) as socket:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             await self.send(socket,{"type":"session.start","token":token})
             self.assertEqual((await self.receive(socket))["type"],"error")
         self.assertEqual(self.engine.calls,[])
 
     async def test_single_capture_and_language_validation(self):
-        async with connect(self.url) as first, connect(self.url) as second:
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as first, connect(self.url, origin="chrome-extension://" + "a" * 32) as second:
             token=await self.pair(first)
-            await self.send(second,{"type":"pair.request","code":"123456","extensionId":"test2"})
+            await self.send(second,{"type":"pair.request","extensionId":"a" * 32})
             self.assertEqual((await self.receive(second))["type"],"pair.rejected")
             await self.send(first,{"type":"session.start","token":token,"options":{"targetLanguage":"xx"}})
             self.assertEqual((await self.receive(first))["type"],"error")
         self.assertEqual(self.engine.calls,[])
+
+    async def test_web_pages_and_missing_origin_rejected_before_session(self):
+        from websockets.exceptions import InvalidStatus
+        for origin in (None, 'null', 'https://example.com', 'chrome-extension://invalid'):
+            with self.assertRaises(InvalidStatus):
+                async with connect(self.url, origin=origin): pass
+        self.assertEqual(self.engine.calls, [])
+
+    async def test_fresh_token_and_no_code_needed_on_reconnect(self):
+        async with connect(self.url, origin='chrome-extension://' + 'a' * 32) as socket:
+            first = await self.pair(socket)
+        async with connect(self.url, origin='chrome-extension://' + 'a' * 32) as socket:
+            second = await self.pair(socket)
+            self.assertNotEqual(first, second)
+            await self.send(socket, {'type':'session.start','token':first})
+            self.assertEqual((await self.receive(socket))['type'], 'error')
 
 
 class OfflineTests(unittest.TestCase):

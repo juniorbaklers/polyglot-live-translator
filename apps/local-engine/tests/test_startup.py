@@ -7,21 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from startup import load_pairing_code, single_instance
+from startup import single_instance
 from auto_start import create_shortcut, ps_quote
 from launcher import LogStream
 
 
 class StartupTests(unittest.TestCase):
-    def test_code_survives_restart_and_corruption_is_not_silently_replaced(self):
-        with tempfile.TemporaryDirectory() as folder:
-            code = load_pairing_code(folder)
-            self.assertRegex(code, r'^\d{6}$')
-            self.assertEqual(load_pairing_code(folder), code)
-            path = Path(folder) / '.association-code'; path.write_text('broken')
-            with self.assertRaises(ValueError): load_pairing_code(folder)
-            self.assertEqual(path.read_text(), 'broken')
-
     def test_lock_blocks_another_process_and_is_released(self):
         with tempfile.TemporaryDirectory() as folder:
             module = str(Path(__file__).resolve().parents[1])
