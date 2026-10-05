@@ -1,13 +1,13 @@
-POLYGLOT 1.3.1 — V7 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+POLYGLOT 1.4.0 — V8 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
 
 METTRE À JOUR L’INSTALLATION EXISTANTE
 1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd.
 2. Décompressez l’archive.
 3. Copiez TOUS les fichiers du dossier moteur-local dans votre dossier moteur-local actuel, en remplaçant les fichiers portant le même nom.
    Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
-   preferences.py est nécessaire : copiez-le aussi.
+   caption_buffer.py et preferences.py sont nécessaires : copiez-les aussi. Le moteur et l’extension doivent être mis à jour ensemble.
 4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
-5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.3.1.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.4.0.
 6. Actualisez la page vidéo. Lancez DEMARRER.cmd ou DEMARRER_PRECISION.cmd et enregistrez le nouveau code dans l’extension.
    Il n’est pas nécessaire de réinstaller les modèles pour cette mise à jour.
 
@@ -22,6 +22,9 @@ Si la fenêtre a été masquée, cliquez sur Afficher la fenêtre de traduction 
 Les options de vocabulaire, domaines et pistes sont repliées dans Réglages avancés — facultatifs. Aucun réglage avancé n’est nécessaire pour traduire l’audio.
 
 UTILISER LES NOUVEAUTÉS
+- Présentation : fenêtre et commandes modernisées ; les réglages avancés restent facultatifs. Les phrases indiquent En cours, Finalisée, À vérifier ou Corrigée. Ces états ne sont pas des scores de précision. Copier copie une traduction finalisée.
+- Les fragments successifs des pistes accessibles sont regroupés pour fournir plus de contexte. Une proposition apparaît immédiatement et peut être révisée. Sans ponctuation, la voix peut attendre le fragment suivant ou la fin de session ; les groupes sont limités à 12 secondes.
+- En audio, une courte pause dans une phrase sans ponctuation conserve le contexte ; une pause plus longue finalise le passage. Cela peut allonger le délai de finalisation. Les traductions identiques sont mémorisées pendant la session, sans changer le modèle.
 - Source du texte : Reconnaître le son conserve le fonctionnement audio progressif.
 - Sous-titres accessibles : activez une piste du lecteur et choisissez la langue originale. Le moteur traduit le texte de cette piste sans reconnaissance audio. Certains sites, notamment les lecteurs propriétaires, n’exposent pas leurs sous-titres : choisissez alors Reconnaître le son. Pas de récupération de pistes privées ni de contournement.
 - Domaine : Général, Informatique/DevOps, Géographie/QGIS, Commerce/comptabilité.

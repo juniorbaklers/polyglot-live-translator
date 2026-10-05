@@ -6,12 +6,12 @@ import json
 import secrets
 import time
 import math
-import uuid
+from caption_buffer import CaptionBuffer
 from preferences import validate_preferences
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v3"
+ENGINE_ID = "polyglot-local-free-v4"
 MAX_AUDIO_BYTES = 2_000_000
 
 
@@ -26,6 +26,7 @@ class LocalService:
         capturing = False
         source, target = "auto", "fr"
         input_mode = "audio"
+        captions = CaptionBuffer(self.engine.translate_text)
         async def send(message):
             await socket.send(json.dumps(message, ensure_ascii=False))
         try:
@@ -60,10 +61,12 @@ class LocalService:
                         if hasattr(self.engine, "configure_session"):
                             self.engine.configure_session(preferences)
                         self.engine.reset_session()
+                        captions = CaptionBuffer(self.engine.translate_text)
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
                     elif kind == "session.stop":
-                        for result in await asyncio.to_thread(self.engine.finish, target):
+                        results = await asyncio.to_thread(captions.finish) if input_mode == "captions" else await asyncio.to_thread(self.engine.finish, target)
+                        for result in results:
                             await send({"type": "subtitle", **result})
                         capturing = False
                         await send({"type": "state", "state": "stopped"})
@@ -80,11 +83,9 @@ class LocalService:
                         if any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) for value in (start, end)) or not 0 <= start < end:
                             raise ValueError("Repères de sous-titres invalides")
                         started = time.perf_counter()
-                        translation = await asyncio.to_thread(self.engine.translate_text, text.strip(), language, target)
-                        await send({"type": "subtitle", "id": uuid.uuid4().hex, "revision": 1,
-                                    "original": text.strip(), "translation": translation, "final": True,
-                                    "start": start, "end": end, "timing": "video", "origin": "captions",
-                                    "sourceLanguage": language, "targetLanguage": target, "uncertainWords": []})
+                        results = await asyncio.to_thread(captions.process, text.strip(), language, target, start, end)
+                        for result in results:
+                            await send({"type": "subtitle", **result})
                         await send({"type": "audio.ack", "sequence": message.get("sequence", 0),
                                     "processingMs": round((time.perf_counter() - started) * 1000)})
                     elif kind == "audio.chunk":

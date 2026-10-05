@@ -35,7 +35,7 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.3.1") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.4.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.

@@ -9,7 +9,7 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v3';
+  static engine='polyglot-local-free-v4';
   readyState=0;
   sent=[];
   constructor(url){super();this.url=url;sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.dispatchEvent(new Event('open'));});}

@@ -1,6 +1,6 @@
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v3";
+const FREE_ENGINE_ID = "polyglot-local-free-v4";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;
@@ -83,7 +83,7 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
       try {
         const response = JSON.parse(String(event.data));
         if (response.type === "pair.accepted") {
-          if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Ce service n’est pas le moteur local gratuit autorisé."); return; }
+          if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Le moteur et l’extension ne sont pas compatibles. Mettez à jour leurs fichiers ensemble, puis relancez DEMARRER.cmd."); return; }
           token = response.token;
           ws.send(JSON.stringify({ type: "session.start", token, options: { ...message.settings, pairingCode: undefined, outputMode: undefined, sourceLanguage: message.settings.sourceLanguage ?? "auto", targetLanguage: message.settings.targetLanguage ?? "fr" } }));
         } else if (response.type === "state" && response.state === "capturing") {

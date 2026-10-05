@@ -122,8 +122,10 @@ Projet BAKELE, licence MIT. Faster Whisper : MIT. Argos Translate : MIT ou CC0.
 Références : https://github.com/SYSTRAN/faster-whisper et
 https://github.com/argosopentech/argos-translate.
 
-## Extension 1.3.1 et DevOps
+## Extension 1.4.0 et DevOps
 
-Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v3).
+Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v4).
 
-La version 1.3.1 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
+La version 1.4.0 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
+
+La fenêtre utilise une présentation plus soignée, des états de phrase lisibles et un bouton Copier. Le moteur conserve le contexte des phrases sans ponctuation lors de courtes pauses, regroupe les fragments des pistes accessibles et réutilise les traductions identiques en session. Les modèles restent inchangés : aucun gain de qualité chiffré n’est établi sans benchmark réel. Le regroupement peut retarder la voix, qui attend la finalisation.

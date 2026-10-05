@@ -69,7 +69,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result['translation'], 'Traduit : A map')
             self.assertEqual(result['start'], 12.5)
             self.assertEqual(result['timing'], 'video')
-            self.assertTrue(result['final'])
+            self.assertFalse(result['final'])
             ack = await self.receive(socket)
             self.assertEqual(ack['sequence'], 2)
             self.assertIn('processingMs', ack)

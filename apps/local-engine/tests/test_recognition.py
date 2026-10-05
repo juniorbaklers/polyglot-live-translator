@@ -134,6 +134,23 @@ class RecognitionTests(unittest.TestCase):
         self.assertNotIn('translationConfidence', event)
         self.assertEqual(event['sourceLanguage'], 'en')
 
+    def test_short_pause_inside_unpunctuated_phrase_keeps_context(self):
+        first = self.feed("This is a", 2.1)[0]
+        self.assertFalse(first['final'])
+        complete = self.feed("This is a map.", 4.9)[0]
+        self.assertEqual(first['id'], complete['id'])
+        self.assertTrue(complete['final'])
+
+    def test_identical_recognition_reuses_translation_but_metadata_advances(self):
+        first = self.feed("Same words", 2.95)[0]
+        second = self.feed("Same words", 5.95)[0]
+        self.assertEqual(first['translation'], second['translation'])
+        self.assertGreater(second['revision'], first['revision'])
+        self.assertEqual(self.translator.hypotheses.call_count, 1)
+        self.engine.reset_session()
+        self.feed("Same words", 2.95)
+        self.assertEqual(self.translator.hypotheses.call_count, 2)
+
     def test_recognition_settings_preserve_local_context_and_timestamps(self):
         self.feed("Hello", 2.95)
         options = self.engine.model.transcribe.call_args.kwargs

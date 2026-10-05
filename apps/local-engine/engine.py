@@ -3,6 +3,7 @@ import io
 import os
 import re
 import uuid
+from collections import OrderedDict
 from preferences import DOMAINS, normalized, validate_preferences
 from pathlib import Path
 
@@ -69,8 +70,10 @@ class LocalEngine:
         preferences = validate_preferences(options)
         self.session_vocabulary = ", ".join(filter(None, (DOMAINS[preferences["domain"]], preferences["glossary"])))
         self.corrections = preferences["corrections"]
+        self.translation_cache = OrderedDict()
 
     def reset_session(self):
+        self.translation_cache = OrderedDict()
         self.context = ""
         self.detected_language = None
         self.last_source = None
@@ -91,9 +94,19 @@ class LocalEngine:
                 return item["translation"]
         if language == target:
             return text
+        key = (text.strip(), language, target)
+        if key in self.translation_cache:
+            self.translation_cache.move_to_end(key)
+            return self.translation_cache[key]
         translator = self.languages[language].get_translation(self.languages[target])
         hypotheses = translator.hypotheses(text, num_hypotheses=1)
-        return hypotheses[0].value.strip() if hypotheses else ""
+        value = hypotheses[0].value.strip() if hypotheses else ""
+        # Ne pas mémoriser une absence de traduction : une révision peut réessayer.
+        if value:
+            self.translation_cache[key] = value
+            if len(self.translation_cache) > 64:
+                self.translation_cache.popitem(last=False)
+        return value
 
     def result(self, original, language, target, final, bounded=False):
         self.revision += 1
@@ -134,7 +147,7 @@ class LocalEngine:
             temperature=0.0, initial_prompt=prompt, word_timestamps=True,
             hotwords=getattr(self, "session_vocabulary", "") or None,
             vad_filter=True, vad_parameters={"threshold": 0.35, "speech_pad_ms": 400},
-            condition_on_previous_text=False,
+            condition_on_previous_text=False, hallucination_silence_threshold=2.0,
         )
         segments = list(segments)
         original = " ".join(segment.text.strip() for segment in segments).strip()
@@ -158,9 +171,14 @@ class LocalEngine:
         last_end = words[-1].end if words else max(getattr(segment, "end", duration) for segment in segments)
         # Finaliser après une pause audible, plutôt qu'à chaque ponctuation ajoutée
         # artificiellement par Whisper à la fin d'un petit fichier audio.
-        paused = duration - last_end >= 0.7
-        if paused or duration >= 12:
-            event = self.result(original, detected, target, True, bounded=not paused)
+        silence = duration - last_end
+        has_ending = bool(re.search(r'[.!?](?:["”»])?$', original))
+        # Une petite pause au milieu d'une phrase non ponctuée conserve la fenêtre
+        # afin que la traduction suivante puisse utiliser la suite du propos.
+        paused = silence >= 0.7 and has_ending
+        long_pause = silence >= 1.5
+        if paused or long_pause or duration >= 12:
+            event = self.result(original, detected, target, True, bounded=not (paused and has_ending))
             self.advance(original)
             self.window = None
             self.window_start = self.window_end
