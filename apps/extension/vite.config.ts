@@ -8,7 +8,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: { popup: resolve(__dirname, "popup.html"), offscreen: resolve(__dirname, "offscreen.html"), background: resolve(__dirname, "src/background.ts"), content: resolve(__dirname, "src/content.ts") },
-      output: { entryFileNames: "[name].js", chunkFileNames: "chunks/[name].js", assetFileNames: "assets/[name][extname]" }
+      output: { banner: chunk => chunk.name === "content" ? "(() => {" : "", footer: chunk => chunk.name === "content" ? "})();" : "", entryFileNames: "[name].js", chunkFileNames: "chunks/[name].js", assetFileNames: "assets/[name][extname]" }
     }
   }
 });
