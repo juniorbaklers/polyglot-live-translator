@@ -6,6 +6,7 @@ import uuid
 from collections import OrderedDict
 from preferences import DOMAINS, normalized, validate_preferences
 from pathlib import Path
+from resources import detect_resources, choose_profile, load_model
 
 os.environ["ARGOS_MODEL_PROVIDER"] = "OPENNMT"
 os.environ["ARGOS_DEVICE_TYPE"] = "cpu"
@@ -46,19 +47,18 @@ class LocalEngine:
         import argostranslate.translate
         self.translate_module = argostranslate.translate
         configure_local_translation(self.translate_module)
-        self.precision = os.environ.get("POLYGLOT_MODE", "equilibre") == "precision"
-        model_name = "small" if self.precision else "base"
-        self.beam_size = 3 if self.precision else 1
-        self.context_limit = 700 if self.precision else 160
+        resources = detect_resources()
+        requested = choose_profile(resources, os.environ.get("POLYGLOT_MODE", "auto"))
+        self.model, profile = load_model(WhisperModel, ROOT / "models", requested)
+        self.precision = profile.model == "small"
+        self.beam_size = profile.beam
+        self.context_limit = profile.context
+        memory = "inconnue" if resources.available is None else f"{resources.available / (1024 ** 3):.1f} Gio"
+        print(f"Profil automatique : {profile.model}, {profile.threads} threads ; RAM disponible {memory}.", flush=True)
         vocabulary = ROOT / "VOCABULAIRE.txt"
         self.vocabulary = vocabulary.read_text(encoding="utf-8-sig").strip()[:600] if vocabulary.exists() else ""
         self.configure_session({})
         self.reset_session()
-        # Les téléchargements ont lieu exclusivement dans install_models.py.
-        self.model = WhisperModel(
-            model_name, device="cpu", compute_type="int8", cpu_threads=min(8, os.cpu_count() or 4),
-            download_root=str(ROOT / "models"), local_files_only=True,
-        )
         self.languages = {item.code: item for item in self.translate_module.get_installed_languages()}
         for source, target in [("en", "fr"), ("fr", "en"), ("en", "es"), ("es", "en")]:
             if source not in self.languages or target not in self.languages:

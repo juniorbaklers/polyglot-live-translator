@@ -10,8 +10,13 @@ def main():
     os.environ["ARGOS_DEVICE_TYPE"] = "cpu"
     from faster_whisper import WhisperModel
     import argostranslate.package
-    print("Téléchargement du modèle de transcription Whisper base…", flush=True)
-    WhisperModel("base", device="cpu", compute_type="int8", download_root=str(ROOT / "models"))
+    from resources import detect_resources, choose_profile
+    profile = choose_profile(detect_resources())
+    names = ["tiny", "base"] + (["small"] if profile.model == "small" else [])
+    for name in names:
+        print(f"Téléchargement du modèle de transcription Whisper {name}…", flush=True)
+        WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=profile.threads,
+                     download_root=str(ROOT / "models"))
     print("Installation des traductions anglais / français / espagnol…", flush=True)
     argostranslate.package.update_package_index()
     available = argostranslate.package.get_available_packages()

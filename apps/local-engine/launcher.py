@@ -25,7 +25,7 @@ class LogStream:
 
 def run():
     os.chdir(ROOT)
-    os.environ['POLYGLOT_MODE'] = 'precision' if '--precision' in sys.argv else 'equilibre'
+    os.environ['POLYGLOT_MODE'] = 'precision' if '--precision' in sys.argv else 'auto'
     logger = logging.getLogger('polyglot-launcher'); logger.setLevel(logging.INFO); logger.propagate = False
     handler = RotatingFileHandler(ROOT / 'moteur-auto.log', maxBytes=1_000_000, backupCount=1, encoding='utf-8')
     handler.setFormatter(logging.Formatter('%(asctime)s %(message)s')); logger.addHandler(handler)
