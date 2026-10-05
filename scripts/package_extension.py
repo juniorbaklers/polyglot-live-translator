@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ENGINE_FILES = ["resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
 
 
-def package(output):
+def package(output, extension_only=False):
     dist = ROOT / "apps/extension/dist"
     manifest = json.loads((dist / "manifest.json").read_text())
     if manifest['version'] != json.loads((ROOT / "apps/extension/public/manifest.json").read_text())['version']:
@@ -21,8 +21,11 @@ def package(output):
     if protocol not in (dist / "offscreen.js").read_text() or protocol not in (ROOT / "apps/local-engine/server.py").read_text():
         raise ValueError("Versions moteur/extension incompatibles")
     entries = [(f"extension/{path.relative_to(dist).as_posix()}", path) for path in dist.rglob('*') if path.is_file()]
-    entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
-    entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+    if extension_only:
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_HISTORIQUE.txt"), ("LICENSE", ROOT / "LICENSE")]
+    else:
+        entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
+        entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(entries):
@@ -35,5 +38,7 @@ def package(output):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Sans_Code_V14.zip')
-    package(parser.parse_args().output)
+    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Historique_V15.zip')
+    parser.add_argument("--extension-only", action="store_true")
+    args = parser.parse_args()
+    package(args.output, args.extension_only)

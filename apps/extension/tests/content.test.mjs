@@ -68,7 +68,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.9.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.10.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -137,4 +137,38 @@ test('rafraîchissement incrémental : conserver les lignes et la correction ouv
  assert.equal(root.querySelector('.phrase'),first);assert.equal(first.querySelector('.editor'),editor);assert.equal(editor.querySelector('textarea').value,'Brouillon conservé');
  receive({type:'overlay.subtitle',id:'b',revision:2,final:true,original:'Next sentence',translation:'Phrase suivante'});
  assert.equal(root.querySelector('.phrase'),first);assert.equal(root.querySelectorAll('.phrase').length,2);dom.window.close();
+});
+
+test('lignes précédentes : relecture stable, nouvelles phrases et retour au direct',async()=>{
+ const {dom,w,receive,root}=setup();await tick();
+ const log=root.querySelector('.transcript');
+ Object.defineProperties(log,{scrollHeight:{get:()=>3000},clientHeight:{get:()=>300}});
+ for(let i=0;i<3;i++)receive({type:'overlay.subtitle',id:`h${i}`,final:true,original:`Source ${i}`,translation:`Ligne ${i}`});
+ assert.equal(log.scrollTop,3000);
+ root.querySelector('[data-history-previous]').click();assert.equal(log.scrollTop,2760);
+ const position=log.scrollTop;
+ receive({type:'overlay.subtitle',id:'h3',final:true,original:'Next',translation:'Nouvelle ligne'});
+ assert.equal(log.scrollTop,position);assert.equal(root.querySelectorAll('.phrase').length,3);
+ assert.match(root.querySelector('[data-history-live]').textContent,/\+1/);
+ assert.match(root.querySelector('[data-document-count]').textContent,/4 phrase/);
+ root.querySelector('[data-history-live]').click();assert.equal(log.scrollTop,3000);
+ assert.equal(root.querySelectorAll('.phrase').length,4);assert.equal(root.querySelector('[data-history-live]').disabled,true);
+ log.scrollTop=1800;log.dispatchEvent(new w.Event('scroll'));
+ receive({type:'overlay.subtitle',id:'h4',final:true,original:'More',translation:'Encore'});
+ assert.equal(log.scrollTop,1800);assert.match(root.querySelector('[data-history-status]').textContent,/Relecture/);
+ receive({type:'overlay.show',text:'Connexion au moteur local…'});
+ assert.equal(root.querySelector('[data-history-live]').disabled,true);assert.equal(root.querySelectorAll('.phrase').length,0);dom.window.close();
+});
+
+test('historique ancien : pages bornées et accès aux premières phrases',async()=>{
+ const {dom,receive,root}=setup();await tick();
+ for(let i=0;i<260;i++)receive({type:'overlay.subtitle',id:`p${i}`,final:true,original:`S${i}`,translation:`T${i}`});
+ const log=root.querySelector('.transcript');log.scrollTop=0;
+ root.querySelector('[data-history-previous]').click();
+ assert.equal(root.querySelectorAll('.phrase').length,150);assert.equal(root.querySelector('.translation').textContent,'T10');
+ root.querySelector('[data-history-previous]').click();assert.equal(root.querySelector('.translation').textContent,'T0');
+ receive({type:'overlay.subtitle',id:'p260',final:true,original:'S260',translation:'T260'});
+ assert.equal(root.querySelector('.translation').textContent,'T0');assert.match(root.querySelector('[data-history-live]').textContent,/\+111/);
+ root.querySelector('[data-history-live]').click();assert.equal(root.querySelector('.translation').textContent,'T111');
+ assert.equal([...root.querySelectorAll('.translation')].at(-1).textContent,'T260');dom.window.close();
 });
