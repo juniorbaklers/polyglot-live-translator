@@ -1,0 +1,17 @@
+DIAGNOSTIC ESPACE POLYGLOT — AUCUNE SUPPRESSION
+
+1. Decompressez ce ZIP.
+2. Copiez DIAGNOSTIC_ESPACE.cmd et diagnostic_espace.py dans le dossier
+   qui contient votre .venv et votre dossier models. Generalement moteur-local.
+   Il ne faut pas les laisser dans le ZIP ou dans le dossier extension.
+3. Double-cliquez sur DIAGNOSTIC_ESPACE.cmd.
+4. Attendez la fin. Le diagnostic peut prendre un moment.
+5. Envoyez RAPPORT_ESPACE.txt, cree dans ce meme dossier.
+
+Aucun modele, dependance ou fichier existant n'est supprime ou modifie.
+Seuls RAPPORT_ESPACE.txt et RAPPORT_ESPACE.json sont crees ou remplaces.
+Il n'est pas necessaire d'arreter la traduction pour ce diagnostic.
+Le rapport ne contient ni transcription, ni audio, ni identifiant utilisateur,
+ni chemin complet vers vos dossiers personnels.
+Ce diagnostic ne reduit pas encore le poids du moteur : il mesure les
+composants avant de choisir un allegement et de verifier sa compatibilite.

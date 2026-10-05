@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE_FILES = ["languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
+ENGINE_FILES = ["DIAGNOSTIC_ESPACE.cmd", "diagnostic_espace.py", "languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
 
 
 def package(output, extension_only=False):
