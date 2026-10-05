@@ -7,6 +7,7 @@ import secrets
 import time
 import math
 from caption_buffer import CaptionBuffer
+from startup import load_pairing_code, single_instance
 from preferences import validate_preferences
 
 HOST = "127.0.0.1"
@@ -119,13 +120,13 @@ class LocalService:
                 self.active_connection = None
 
 
-async def main():
+async def serve_local():
     from websockets.asyncio.server import serve
     from offline_guard import enable
     enable()
     from engine import LocalEngine
     print("Chargement des modèles locaux…", flush=True)
-    service = LocalService(LocalEngine())
+    service = LocalService(LocalEngine(), code=load_pairing_code())
     # Origin absent accepté pour les clients locaux ; les pages web ordinaires sont refusées.
     import re
     async with serve(service.handle, HOST, PORT,
@@ -133,8 +134,13 @@ async def main():
                      max_size=3_000_000, max_queue=4, compression=None):
         print(f"\nPOLYGLOT LOCAL — PRÊT\nCode d’association : {service.code}\n"
               "Transcription et traduction locales. Aucun appel à une API payante.\n"
-              "Gardez cette fenêtre ouverte. Ctrl+C pour arrêter.\n", flush=True)
+              "Lanceur manuel : gardez cette fenêtre ouverte. Ctrl+C pour arrêter.\n", flush=True)
         await asyncio.Future()
+
+
+async def main():
+    with single_instance():
+        await serve_local()
 
 
 if __name__ == "__main__":
@@ -143,5 +149,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
     except Exception as error:
-        print(f"Démarrage impossible : {error}\nRelancez INSTALLER.cmd si les modèles manquent.", flush=True)
+        print(f"Démarrage impossible : {error}\nSi le moteur est déjà lancé, utilisez directement l’extension. Si les modèles manquent, lancez INSTALLER.cmd.", flush=True)
         raise SystemExit(1)

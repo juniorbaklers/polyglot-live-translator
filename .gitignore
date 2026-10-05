@@ -14,3 +14,6 @@ apps/local-engine/installation-ok.txt
 
 artifacts/
 rapport-precision.json
+
+apps/local-engine/.association-code
+apps/local-engine/.moteur-lock

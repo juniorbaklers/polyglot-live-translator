@@ -37,7 +37,7 @@ async function restore() {
   capturing = Boolean(activeCapture);
   captureTabId = activeCapture?.tabId;
   updateButton();
-  showState(capturing ? "Traduction active. Utilisez Afficher la fenêtre si elle est masquée." : captureError ?? "Lancez DEMARRER.cmd, puis saisissez son code à 6 chiffres.", Boolean(captureError));
+  showState(capturing ? "Traduction active. Utilisez Afficher la fenêtre si elle est masquée." : captureError ?? "Moteur automatique activé ? Cliquez sur Démarrer. Sinon, lancez DEMARRER.cmd et enregistrez son code une fois.", Boolean(captureError));
 }
 restore().catch((error) => { state.textContent = String(error); }).finally(() => {
   capture.disabled = output.disabled = reveal.disabled = false;
