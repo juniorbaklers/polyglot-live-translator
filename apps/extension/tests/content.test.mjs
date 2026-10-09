@@ -14,7 +14,7 @@ function setup(html='<body></body>', settings={}) {
 }
 const tick=async()=>{for(let i=0;i<20;i++) await Promise.resolve();};
 test('révisions, texte sécurisé et repères d’incertitude dans l’interface livrée',async()=>{
- const {dom,w,receive,root}=setup();await tick();
+ const {dom,w,receive,root}=setup('<body></body>',{overlayReadingMode:'progressive'});await tick();
  receive({type:'overlay.subtitle',id:'x',revision:1,final:false,original:'Hello QGIS <img>',translation:'<script>bad</script>',uncertainWords:['QGIS']});
  assert.equal(root.querySelector('.state-label').textContent,'Provisoire');
  assert.equal(root.querySelector('mark').textContent,'QGIS');assert.equal(root.querySelector('.translation').children.length,0);
@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.13.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.14.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -209,4 +209,39 @@ test('piste chinoise zh-Hans : détection automatique et affichage Unicode',asyn
  receive({type:'overlay.subtitle',id:'zh',revision:1,final:true,original:'Hello.',translation:'你好。',sourceLanguage:'en',targetLanguage:'zh'});
  assert.equal(root.querySelector('.translation').textContent,'你好。');assert.match(root.querySelector('.phrase-head').textContent,/Chinois simplifié/);
  receive({type:'captions.stop'});dom.window.close();
+});
+
+test('lecture finale par défaut : masquer les brouillons, publier une fois, garder la relecture stable', async()=>{
+ const {dom,w,receive,root}=setup();await tick();
+ assert.equal(root.querySelector('#reading-mode').value,'final');
+ receive({type:'overlay.subtitle',id:'a',revision:1,final:false,original:'A',translation:'Un'});
+ receive({type:'overlay.subtitle',id:'a',revision:2,final:false,original:'A map',translation:'Une carte'});
+ assert.equal(root.querySelectorAll('.phrase').length,0);
+ assert.match(root.querySelector('.empty').textContent,/finalisée/);
+ receive({type:'overlay.subtitle',id:'a',revision:3,final:true,original:'A map.',translation:'Une carte.'});
+ const row=root.querySelector('.phrase');assert.equal(row.querySelector('.translation').textContent,'Une carte.');
+ const log=root.querySelector('.transcript');Object.defineProperties(log,{scrollHeight:{get:()=>2000},clientHeight:{get:()=>300}});
+ root.querySelector('[data-history-previous]').onclick();const scroll=log.scrollTop;
+ receive({type:'overlay.subtitle',id:'b',revision:1,final:false,original:'Next',translation:'Suite'});
+ assert.equal(root.querySelector('.phrase'),row);assert.equal(log.scrollTop,scroll);
+ assert.doesNotMatch(root.querySelector('[data-history-live]').textContent,/\+/);
+ receive({type:'overlay.subtitle',id:'b',revision:2,final:true,original:'Next sentence.',translation:'Phrase suivante.'});
+ assert.match(root.querySelector('[data-history-live]').textContent,/\+1/);
+ assert.equal(root.querySelectorAll('.phrase').length,1);
+ root.querySelector('[data-history-live]').click();assert.equal(root.querySelectorAll('.phrase').length,2);
+ receive({type:'overlay.subtitle',id:'b',revision:3,final:false,original:'Stale',translation:'Ancien'});
+ assert.equal([...root.querySelectorAll('.translation')].at(-1).textContent,'Phrase suivante.');dom.window.close();
+});
+
+test('choix de lecture immédiat et mémorisé : retirer les brouillons et conserver un extrait interrompu signalé',async()=>{
+ const {dom,w,receive,root,saved}=setup();await tick();
+ receive({type:'overlay.subtitle',id:'a',revision:1,final:false,original:'Still speaking',translation:'En cours'});
+ const mode=root.querySelector('#reading-mode');mode.value='progressive';mode.dispatchEvent(new w.Event('change'));await tick();
+ assert.equal(saved().overlayReadingMode,'progressive');assert.equal(root.querySelector('.state-label').textContent,'Provisoire');
+ mode.value='final';mode.dispatchEvent(new w.Event('change'));await tick();
+ assert.equal(saved().overlayReadingMode,'final');assert.equal(root.querySelectorAll('.phrase').length,0);
+ receive({type:'overlay.stopped'});
+ assert.equal(root.querySelector('.state-label').textContent,'Finalisée · à relire');
+ assert.match(root.querySelector('.phrase').textContent,/Fin de phrase non confirmée/);
+ assert.equal(root.querySelector('.translation').textContent,'En cours');dom.window.close();
 });

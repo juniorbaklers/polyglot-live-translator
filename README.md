@@ -200,3 +200,7 @@ raccourci Windows ou de gain disque réalisé pendant cette phase : double insta
 temporaire. Après comparaison, validation audio réelle et mesure de .venv-leger sont
 nécessaires avant promotion et retrait de l’ancien environnement. Guide :
 docs/ESSAI_MOTEUR_LEGER.txt. Modèles natifs et Windows non exécutés ici.
+
+### Lecture stable (extension 1.14.0)
+
+La fenêtre affiche par défaut uniquement les phrases finalisées. Paramètres → Lecture permet de retrouver le texte provisoire puis finalisé ; le choix est mémorisé et appliqué immédiatement. Le moteur continue de traiter les brouillons, sans délai fixe ajouté. Afficher une phrase finalisée implique d’attendre sa finalisation et ne garantit ni son exactitude ni sa complétude : les extraits interrompus restent signalés à relire. L’historique, l’export et les corrections sont conservés. Mise à jour de l’extension uniquement, puis rechargement et actualisation de la page vidéo. Validation : compilation/typecheck et 41 tests extension réussis ; vitesse sur vidéo réelle non mesurée.
