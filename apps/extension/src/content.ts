@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.15.0") return;
-scope.__polyglotContentVersion = "1.15.0";
+if (scope.__polyglotContentVersion === "1.16.0") return;
+scope.__polyglotContentVersion = "1.16.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -23,6 +23,15 @@ let documentOriginal: string | undefined;
 let documentTranslation: string | undefined;
 let studyExportText = "";
 let stopCaptions: (() => void) | undefined;
+let archiveWrites = Promise.resolve();
+function saveArchive() {
+  const rows = transcriptHistory.filter(item => item.final).map(item => ({...item}));
+  if (!rows.length) return;
+  const archive = {version: 1, savedAt: Date.now(), rows, documentOriginal, documentTranslation};
+  archiveWrites = archiveWrites.then(() => chrome.storage.local.set({transcriptArchive: archive})).catch(() => {
+    setNotice("Sauvegarde locale impossible. Exportez la transcription avant de fermer la page.");
+  });
+}
 
 function ensureOverlay() {
   if (panel?.isConnected) return panel;
@@ -46,8 +55,8 @@ function ensureOverlay() {
     <header><span class="brand">Polyglot Live</span><span class="status"><span class="dot"></span><span data-status>Traduction en cours</span></span><button class="stop" data-stop>Arrêter</button><div class="views" aria-label="Affichage du texte"><button data-view="both" aria-pressed="false">Les deux</button><button data-view="translation" aria-pressed="true">Traduction</button></div><button data-size="smaller" aria-label="Réduire la fenêtre" title="Réduire la fenêtre">−</button><button data-size="larger" aria-label="Agrandir la fenêtre" title="Agrandir la fenêtre">+</button><button class="icon" data-settings aria-label="Paramètres" aria-expanded="false">⚙</button><button class="icon" data-close aria-label="Masquer la fenêtre">×</button></header>
     <div class="settings" hidden><label for="output-mode">Mode de traduction</label><select id="output-mode"><option value="subtitles">Sous-titres traduits</option><option value="voice">Voix traduite</option><option value="both">Sous-titres + voix traduite</option></select><label for="reading-mode">Lecture</label><select id="reading-mode"><option value="final">Phrases finalisées uniquement</option><option value="progressive">Texte provisoire puis finalisé</option></select><p class="note">Les phrases finalisées apparaissent après leur traitement. L’affichage attend davantage, mais le texte reste stable. Finalisé ne signifie pas sans erreur.</p><label for="text-size">Taille du texte</label><input id="text-size" type="range" min="16" max="36" value="23"><div class="tools"><button data-export="txt">Exporter TXT</button><button data-export="srt">Exporter SRT</button></div><p class="note">Export de toutes les phrases finalisées de cette session. Audio : temps relatifs au début de la capture ; sous-titres : temps de la vidéo.</p><p class="note">« Les deux » affiche le texte original et sa traduction. La voix conserve le son original. Le moteur local gratuit doit être lancé, automatiquement ou avec DEMARRER.cmd. Aucun service payant n’est utilisé.</p></div>
     <div class="metrics">Temps de traitement : en attente</div><div class="notice" role="status"></div><div class="history-controls"><button data-history-previous>Lignes précédentes</button><button data-history-live disabled>Revenir au direct</button><span data-history-status>Suivi en direct</span></div><div class="transcript" role="log" aria-label="Historique des traductions"><div class="empty">Les phrases traduites apparaîtront ici.</div></div>
-    <div class="document-access"><button data-document>Transcription complète et export</button><span data-document-count>0 phrase finalisée</span></div>
-    <section class="document" hidden aria-label="Transcription complète"><div class="document-title"><strong>Transcription complète</strong><button data-document-close>Retour à la vidéo</button></div><p class="note" data-document-note></p><label for="document-original">Texte original</label><textarea id="document-original" spellcheck="true"></textarea><label for="document-translation">Traduction</label><textarea id="document-translation" spellcheck="true"></textarea><details class="study"><summary>Résumé et quiz gratuits</summary><p class="note">Après arrêt et relecture, choisissez le texte à étudier. Le résumé sélectionne des phrases du document ; le quiz propose des extraits à compléter. Aucun service externe.</p><div class="document-export"><select id="study-source" aria-label="Texte à étudier"><option value="translation">Traduction relue</option><option value="original">Texte original relu</option></select><button data-study="summary">Résumé</button><button data-study="quiz">Quiz</button></div><div class="study-result" aria-live="polite"></div><button data-study-export hidden>Exporter la fiche TXT</button></details><div class="document-export"><select aria-label="Format d’export" id="document-format"><option value="translation">Traduction — TXT</option><option value="original">Texte original — TXT</option><option value="bilingual">Original et traduction — TXT</option><option value="srt">Sous-titres traduits — SRT</option></select><button data-document-export>Exporter</button></div><p class="note">Les retouches du texte complet sont incluses dans les TXT. Pour le SRT, utilisez Corriger sur chaque phrase afin de conserver ses temps. Exportez avant d’actualiser la page ou de démarrer une nouvelle session.</p></section>
+    <div class="document-access"><button data-document>Transcription complète et export</button><button data-restore title="Ouvrir la dernière transcription sauvegardée">Dernière session</button><span data-document-count>0 phrase finalisée</span></div>
+    <section class="document" hidden aria-label="Transcription complète"><div class="document-title"><strong>Transcription complète</strong><button data-document-close>Retour à la vidéo</button></div><p class="note" data-document-note></p><label for="document-original">Texte original</label><textarea id="document-original" spellcheck="true"></textarea><label for="document-translation">Traduction</label><textarea id="document-translation" spellcheck="true"></textarea><details class="study"><summary>Résumé et quiz gratuits</summary><p class="note">Après arrêt et relecture, choisissez le texte à étudier. Le résumé sélectionne des phrases du document ; le quiz propose des extraits à compléter. Aucun service externe.</p><div class="document-export"><select id="study-source" aria-label="Texte à étudier"><option value="translation">Traduction relue</option><option value="original">Texte original relu</option></select><button data-study="summary">Résumé</button><button data-study="quiz">Quiz</button></div><div class="study-result" aria-live="polite"></div><button data-study-export hidden>Exporter la fiche TXT</button></details><div class="document-export"><select aria-label="Format d’export" id="document-format"><option value="translation">Traduction — TXT</option><option value="original">Texte original — TXT</option><option value="bilingual">Original et traduction — TXT</option><option value="srt">Sous-titres traduits — SRT</option></select><button data-document-export>Exporter</button></div><p class="note">Les retouches du texte complet sont incluses dans les TXT. Pour le SRT, utilisez Corriger sur chaque phrase afin de conserver ses temps. La dernière session est sauvegardée à l’arrêt. Exportez les sessions que vous souhaitez conserver durablement.</p></section>
   </section><button class="resize-grip" aria-label="Redimensionner la fenêtre" title="Faites glisser ce coin pour redimensionner" tabindex="-1"></button>`;
   document.documentElement.appendChild(panel);
   applyOverlaySize(760, Math.min(480, window.innerHeight * .7));
@@ -126,6 +135,9 @@ function ensureOverlay() {
     historyEnd = null;
     renderHistory();
     chrome.storage.local.set({ overlayReadingMode: finalOnly ? 'final' : 'progressive' }).catch(() => undefined);
+    chrome.runtime.sendMessage({type: 'reading.change', translateDrafts: !finalOnly}).then(response => {
+      if (response?.ok === false) setNotice(response.error ?? 'Mode de lecture non appliqué au moteur.');
+    }).catch(() => setNotice('Connexion au moteur interrompue.'));
   };
   root.querySelector<HTMLInputElement>('#text-size')!.oninput = (event) => {
     fontSize = Number((event.target as HTMLInputElement).value);
@@ -148,12 +160,25 @@ function ensureOverlay() {
   root.querySelector<HTMLButtonElement>('[data-document]')!.onclick = () => {
     root!.querySelector<HTMLElement>('.document')!.hidden = false; renderDocument();
   };
+  root.querySelector<HTMLButtonElement>('[data-restore]')!.onclick = async () => {
+    if (sessionActive) { setNotice('Arrêtez la traduction avant d’ouvrir la dernière session.'); return; }
+    try {
+      const {transcriptArchive: archive} = await chrome.storage.local.get('transcriptArchive');
+      if (!archive || archive.version !== 1 || !Array.isArray(archive.rows) || !archive.rows.length) { setNotice('Aucune session sauvegardée.'); return; }
+      transcriptHistory = archive.rows.filter((item: TranscriptRow) => item.final === true && typeof item.original === 'string' && typeof item.translation === 'string');
+      documentOriginal = typeof archive.documentOriginal === 'string' ? archive.documentOriginal : undefined;
+      documentTranslation = typeof archive.documentTranslation === 'string' ? archive.documentTranslation : undefined;
+      historyEnd = null; renderedRows.clear(); clearStudy(); renderHistory();
+      root!.querySelector<HTMLElement>('.document')!.hidden = false; renderDocument();
+      setDocumentNotice('Dernière session sauvegardée — transcription disponible pour relecture et export.');
+    } catch { setNotice('Lecture de la sauvegarde impossible.'); }
+  };
   root.querySelector<HTMLButtonElement>('[data-document-close]')!.onclick = () => { root!.querySelector<HTMLElement>('.document')!.hidden = true; };
   root.querySelector<HTMLTextAreaElement>('#document-original')!.oninput = event => {
-    if (!sessionActive) { documentOriginal = (event.target as HTMLTextAreaElement).value; clearStudy(); }
+    if (!sessionActive) { documentOriginal = (event.target as HTMLTextAreaElement).value; clearStudy(); saveArchive(); }
   };
   root.querySelector<HTMLTextAreaElement>('#document-translation')!.oninput = event => {
-    if (!sessionActive) { documentTranslation = (event.target as HTMLTextAreaElement).value; clearStudy(); }
+    if (!sessionActive) { documentTranslation = (event.target as HTMLTextAreaElement).value; clearStudy(); saveArchive(); }
   };
   root.querySelector<HTMLButtonElement>('[data-document-export]')!.onclick = () => exportDocument();
   root.querySelectorAll<HTMLButtonElement>('[data-study]').forEach(button => { button.onclick = () => buildStudy(button.dataset.study!); });
@@ -300,7 +325,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.15.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.16.0"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});
@@ -310,6 +335,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     setNotice(message.active ? 'Fenêtre réaffichée.' : 'Cliquez sur Démarrer la traduction dans l’extension.');
     sendResponse({ok: true}); return;
   }
+  if (message.type === "captions.probe") { const choice = accessibleCaptions(message.sourceLanguage ?? "auto"); sendResponse({ok: Boolean(choice), error: choice ? undefined : "Aucune piste activée accessible dans la langue choisie"}); return; }
   if (message.type === "captions.start") { sendResponse(startCaptions(message.sourceLanguage ?? "auto")); return; }
   if (message.type === "captions.stop") { stopCaptions?.(); sendResponse({ok: true}); return; }
   if (message.type === "overlay.metrics") {
@@ -362,6 +388,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     root.querySelector<HTMLElement>('[data-status]')!.textContent = 'Traduction arrêtée';
     root.querySelector<HTMLElement>('.status')!.classList.add('stopped');
     root.querySelector<HTMLButtonElement>('[data-stop]')!.disabled = true;
+    saveArchive();
     setNotice(message.type === 'overlay.error' ? message.text : 'Capture arrêtée. L’historique reste consultable.');
   }
 });
@@ -392,7 +419,7 @@ function openCorrection(row: HTMLElement, item: TranscriptRow) {
       if (!response?.ok) throw new Error(response?.error ?? 'Enregistrement impossible');
       item.recognizedOriginal ??= item.original;
       item.original = original.value.trim(); item.translation = translation.value.trim(); item.corrected = true; item.uncertainWords = [];
-      clearStudy(); renderHistory(); setNotice('Correction enregistrée. Redémarrez la traduction pour la réutiliser.');
+      clearStudy(); renderHistory(); if (!sessionActive) saveArchive(); setNotice('Correction enregistrée. Redémarrez la traduction pour la réutiliser.');
     } catch (error) { save.disabled = false; setNotice(String(error)); }
   };
   editor.append(labelOriginal, original, labelTranslation, translation, note, save, cancel); row.append(editor);
@@ -484,25 +511,33 @@ function exportTranscript(format: string) {
   setDocumentNotice(format === 'srt' ? 'SRT exporté avec les corrections par phrase. Les retouches du document complet concernent les TXT seulement. Audio : repères à ajuster pour la vidéo.' : 'Historique complet TXT exporté avec les corrections par phrase.');
 }
 let captionVideo: HTMLVideoElement | null = null;
+function accessibleCaptions(source: string) {
+  const videos = Array.from(document.querySelectorAll('video')).sort((a,b) => Number(a.paused) - Number(b.paused));
+  for (const video of videos) {
+    const track = Array.from(video.textTracks).find(track =>
+      ['subtitles','captions'].includes(track.kind) && track.mode !== 'disabled' &&
+      ['en','fr','es','zh'].includes(track.language.split('-')[0] || source) &&
+      (source === 'auto' || !track.language || track.language.split('-')[0] === source));
+    if (track) return {video, track};
+  }
+  return undefined;
+}
 function startCaptions(source: string): {ok: boolean; error?: string} {
   stopCaptions?.();
-  const candidates = Array.from(document.querySelectorAll('video')).filter(video => video.textTracks.length);
-  const video = candidates.find(video => !video.paused) ?? candidates[0];
-  if (!video) return {ok: false, error: 'Aucune piste accessible. Utilisez Reconnaître le son.'};
-  const choose = () => Array.from(video.textTracks).find(track =>
-    ['subtitles','captions'].includes(track.kind) && track.mode !== 'disabled' &&
-    (source === 'auto' || !track.language || track.language.split('-')[0] === source));
-  const initial = choose();
-  if (!initial) return {ok: false, error: 'Activez les sous-titres du lecteur et choisissez leur langue originale.'};
-  const language = initial.language.split('-')[0] || source;
-  if (!['en','fr','es','zh'].includes(source === 'auto' ? language : source)) return {ok: false, error: 'Choisissez Anglais, Français, Espagnol ou Chinois simplifié comme langue originale.'};
+  const selection = accessibleCaptions(source);
+  if (!selection) return {ok: false, error: 'Activez une piste originale accessible en anglais, français, espagnol ou chinois, ou utilisez le son.'};
+  const {video} = selection;
+  const choose = () => accessibleCaptions(source)?.video === video ? accessibleCaptions(source)?.track : undefined;
   captionVideo = video;
   const seen = new Set<string>();
   let stopped = false, busy = false;
+  let lastEnd: number | null = null;
+  let flushed = false;
   const read = async () => {
-    if (stopped || busy || video.paused) return;
+    if (stopped || busy) return;
     const track = choose(); if (!track) { setNotice('Piste désactivée : réactivez les sous-titres dans le lecteur.'); return; }
     const cues = Array.from(track.activeCues ?? []);
+    if (video.paused && !video.ended && cues.length) return;
     busy = true;
     try {
       for (const cue of cues) {
@@ -512,15 +547,23 @@ function startCaptions(source: string): {ok: boolean; error?: string} {
         if (!text || seen.has(key)) continue;
         const response = await chrome.runtime.sendMessage({type: 'caption.cue', cue: {text, start: cue.startTime, end: cue.endTime, language: source === 'auto' ? track.language.split('-')[0] : source}});
         if (!response?.ok) { setNotice(response?.error ?? 'Sous-titre non transmis. Mettez la vidéo en pause.'); break; }
+        lastEnd = cue.endTime; flushed = false;
         seen.add(key); if (seen.size > 1000) seen.delete(seen.values().next().value!);
+      }
+      if (!stopped && (!cues.length || video.ended) && !flushed && lastEnd !== null && (video.currentTime >= lastEnd + .75 || video.ended)) {
+        const response = await chrome.runtime.sendMessage({type: 'caption.flush', position: video.ended ? Math.max(video.currentTime, lastEnd + .75) : video.currentTime});
+        if (response?.ok) flushed = true;
       }
     } catch { setNotice('Connexion aux sous-titres interrompue.'); }
     finally { busy = false; }
   };
+  const onSeek = () => { seen.clear(); lastEnd = null; flushed = false; };
+  video.addEventListener('seeking', onSeek);
+  video.addEventListener('ended', read);
   const tracks = Array.from(video.textTracks);
   tracks.forEach(track => track.addEventListener('cuechange', read));
   const timer = setInterval(read, 250);
-  stopCaptions = () => { stopped = true; clearInterval(timer); tracks.forEach(track => track.removeEventListener('cuechange', read)); stopCaptions = undefined; };
+  stopCaptions = () => { stopped = true; clearInterval(timer); video.removeEventListener('seeking', onSeek); video.removeEventListener('ended', read); tracks.forEach(track => track.removeEventListener('cuechange', read)); stopCaptions = undefined; };
   read(); setNotice('Sous-titres accessibles sélectionnés — traduction locale.');
   return {ok: true};
 }

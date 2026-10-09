@@ -67,3 +67,23 @@ class CaptionTests(unittest.TestCase):
         self.assertEqual(final['id'], first['id'])
         self.assertTrue(final['final'])
         self.assertFalse(final['bounded'])
+
+    def test_final_only_skips_drafts_and_flushes_expired_tail_once(self):
+        self.buffer.translate_drafts = False
+        draft = self.buffer.process('Unfinished passage', 'en', 'fr', 4, 6)[0]
+        self.assertEqual(draft['translation'], '')
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.buffer.flush_expired(6.5), [])
+        final = self.buffer.flush_expired(6.75)[0]
+        self.assertEqual(final['id'], draft['id'])
+        self.assertTrue(final['final'])
+        self.assertTrue(final['bounded'])
+        self.assertEqual((final['start'], final['end']), (4, 6))
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.buffer.flush_expired(10), [])
+
+    def test_stale_flush_does_not_finalize_a_newer_cue(self):
+        self.buffer.process('First sentence.', 'en', 'fr', 0, 2)
+        draft = self.buffer.process('New incomplete sentence', 'en', 'fr', 3, 7)[0]
+        self.assertEqual(self.buffer.flush_expired(2.75), [])
+        self.assertEqual(self.buffer.pending['id'], draft['id'])

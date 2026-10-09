@@ -1,0 +1,27 @@
+POLYGLOT LIVE — MISE À JOUR 1.16.0
+
+1. Exportez les textes en cours, puis cliquez sur Arrêter.
+2. Fermez le moteur local (ou sa session de démarrage automatique).
+3. Remplacez les fichiers du dossier apps/local-engine, sans effacer .venv,
+   .venv-leger, models ni vos fichiers de vocabulaire personnels.
+4. Remplacez le contenu de votre dossier extension par apps/extension/dist.
+5. Dans chrome://extensions ou edge://extensions, cliquez sur Recharger.
+6. Actualisez la page de la vidéo, puis relancez DEMARRER.cmd.
+
+Aucun nouveau modèle ni abonnement nécessaire. Moteur et extension utilisent
+le protocole v6 : mettre à jour les deux, pas seulement le dossier dist.
+
+Automatique : activez les sous-titres originaux dans le lecteur avant de démarrer.
+S’ils sont accessibles via textTracks et dans une langue prise en charge,
+ils sont utilisés. Sinon le son est capturé. La source ne change pas au milieu
+d’une session ; pour changer de source, arrêtez puis redémarrez.
+
+Lecture finalisée : les brouillons sont reconnus mais ne sont plus traduits.
+Le réglage Lecture peut réactiver le mode progressif pendant la capture.
+
+La dernière session est sauvegardée à l’arrêt. Cliquez sur Dernière session
+pour la rouvrir après actualisation. Les sessions plus anciennes doivent être
+exportées ; chaque arrêt sauvegardant du texte remplace la dernière sauvegarde.
+Fermer une page avant l’arrêt ne garantit pas la conservation de sa session.
+
+Ces changements ne promettent pas le temps réel sur tout ordinateur.

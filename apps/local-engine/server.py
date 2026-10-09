@@ -14,7 +14,7 @@ from languages import LANGUAGES
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v5"
+ENGINE_ID = "polyglot-local-free-v6"
 EXTENSION_ORIGIN = re.compile(r"chrome-extension://[a-p]{32}")
 MAX_AUDIO_BYTES = 2_000_000
 
@@ -66,13 +66,17 @@ class LocalService:
                         input_mode = options.get("inputMode", "audio")
                         if input_mode not in {"audio", "captions"}:
                             raise ValueError("Mode d’entrée invalide")
+                        translate_drafts = options.get("translateDrafts", True)
+                        if not isinstance(translate_drafts, bool):
+                            raise ValueError("Mode de lecture invalide")
                         preferences = validate_preferences(options)
                         if hasattr(self.engine, "configure_session"):
-                            self.engine.configure_session(preferences)
+                            self.engine.configure_session({**preferences, "translateDrafts": translate_drafts})
                         self.engine.reset_session()
                         captions = CaptionBuffer(self.engine.translate_text,
                                  getattr(self.engine, "translate_final_caption", None),
                                  getattr(self.engine, "reset_translation_context", None))
+                        captions.translate_drafts = translate_drafts
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
                     elif kind == "session.stop":
@@ -81,6 +85,24 @@ class LocalService:
                             await send({"type": "subtitle", **result})
                         capturing = False
                         await send({"type": "state", "state": "stopped"})
+                    elif kind == "session.reading":
+                        value = message.get("translateDrafts")
+                        if not capturing or not isinstance(value, bool):
+                            raise ValueError("Mode de lecture invalide")
+                        self.engine.translate_drafts = value
+                        captions.translate_drafts = value
+                    elif kind == "text.flush":
+                        position = message.get("position")
+                        if not capturing or input_mode != "captions":
+                            raise ValueError("Session de sous-titres requise")
+                        if isinstance(position, bool) or not isinstance(position, (int, float)) or not math.isfinite(position) or position < 0:
+                            raise ValueError("Position vidéo invalide")
+                        started = time.perf_counter()
+                        results = await asyncio.to_thread(captions.flush_expired, position)
+                        for result in results:
+                            await send({"type": "subtitle", **result})
+                        await send({"type": "audio.ack", "sequence": message.get("sequence", 0),
+                                    "processingMs": round((time.perf_counter() - started) * 1000)})
                     elif kind == "text.chunk":
                         if not capturing or input_mode != "captions":
                             raise ValueError("Session de sous-titres requise")

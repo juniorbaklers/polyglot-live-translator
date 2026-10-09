@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.15.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.16.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -270,5 +270,44 @@ test('petite fenêtre : remonter à la molette garde la relecture malgré les no
  assert.match(root.querySelector('[data-history-live]').textContent,/\(\+1\)/);
  root.querySelector('[data-history-live]').click();assert.equal(root.querySelectorAll('.phrase').length,5);
  assert.equal([...root.querySelectorAll('.translation')].at(-1).textContent,'Suivant');
+ dom.window.close();
+});
+
+test('fin de vidéo sans ponctuation : finaliser une fois puis permettre la relecture',async()=>{
+ const {dom,w,receive,messages}=setup('<body><video></video></body>');await tick();
+ const video=w.document.querySelector('video');
+ const track=new w.EventTarget();Object.assign(track,{kind:'subtitles',language:'en',mode:'showing',activeCues:[{text:'Last words',startTime:4,endTime:6}]});
+ Object.defineProperty(video,'textTracks',{value:[track]});
+ Object.defineProperty(video,'paused',{value:false,configurable:true});
+ Object.defineProperty(video,'ended',{value:false,writable:true});
+ assert.equal(receive({type:'captions.probe',sourceLanguage:'en'}).ok,true);
+ assert.equal(receive({type:'captions.probe',sourceLanguage:'fr'}).ok,false);
+ assert.equal(messages.filter(m=>m.type==='caption.cue').length,0);
+ receive({type:'captions.start',sourceLanguage:'en'});await tick();
+ video.currentTime=6;video.ended=true;
+ Object.defineProperty(video,'paused',{value:true});
+ video.dispatchEvent(new w.Event('ended'));await tick();
+ assert.equal(messages.filter(m=>m.type==='caption.flush').length,1);
+ assert.equal(messages.find(m=>m.type==='caption.flush').position,6.75);
+ video.dispatchEvent(new w.Event('ended'));await tick();
+ assert.equal(messages.filter(m=>m.type==='caption.flush').length,1);
+ video.ended=false;Object.defineProperty(video,'paused',{value:false});
+ video.dispatchEvent(new w.Event('seeking'));track.dispatchEvent(new w.Event('cuechange'));await tick();
+ assert.equal(messages.filter(m=>m.type==='caption.cue').length,2);
+ receive({type:'captions.stop'});dom.window.close();
+});
+
+test('sauvegarder les textes relus à l’arrêt et rouvrir la dernière session',async()=>{
+ const archive={version:1,rows:[{id:'saved',final:true,revision:1,original:'A map',translation:'Une carte',start:1,end:2}],documentTranslation:'Texte relu'};
+ const {dom,receive,root,saved}=setup('<body></body>',{transcriptArchive:archive});await tick();
+ root.querySelector('[data-restore]').click();await tick();
+ assert.match(root.querySelector('.notice').textContent,/Arrêtez/);
+ receive({type:'overlay.stopped'});
+ root.querySelector('[data-restore]').click();await tick();
+ assert.equal(root.querySelector('.translation').textContent,'Une carte');
+ assert.equal(root.querySelector('#document-translation').value,'Texte relu');
+ const field=root.querySelector('#document-translation');field.value='Correction conservée';field.dispatchEvent(new dom.window.Event('input'));await tick();
+ assert.equal(saved().transcriptArchive.documentTranslation,'Correction conservée');
+ assert.equal(saved().transcriptArchive.rows[0].start,1);
  dom.window.close();
 });

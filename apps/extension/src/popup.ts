@@ -26,7 +26,7 @@ async function restore() {
   const { activeCapture, captureError } = await chrome.storage.session.get(["activeCapture", "captureError"]);
   source.value = settings.sourceLanguage ?? "auto";
   target.value = settings.targetLanguage ?? "fr";
-  inputMode.value = settings.inputMode ?? "audio";
+  inputMode.value = settings.inputMode ?? "auto";
   domain.value = settings.domain ?? "general";
   glossary.value = settings.glossary ?? "";
   renderCorrections(settings.corrections ?? []);

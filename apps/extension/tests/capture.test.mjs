@@ -9,7 +9,7 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v5';
+  static engine='polyglot-local-free-v6';
   static rejectCode=false;
   readyState=0;
   sent=[];

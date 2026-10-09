@@ -1,6 +1,6 @@
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v5";
+const FREE_ENGINE_ID = "polyglot-local-free-v6";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;
@@ -28,12 +28,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
     return true;
   }
-  if (message.type === "offscreen.text") {
+  if (message.type === "offscreen.reading") {
+    if (!stopping && token && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({type: "session.reading", token, translateDrafts: message.translateDrafts === true}));
+      sendResponse({ok: true});
+    } else sendResponse({ok: false, error: "Session inactive"});
+    return;
+  }
+  if (message.type === "offscreen.text" || message.type === "offscreen.flush") {
     try {
       if (inputMode !== "captions" || stopping || !token || socket?.readyState !== WebSocket.OPEN) throw new Error("Session de sous-titres inactive");
       if (pending >= 6) { const detail = "Le moteur ne suit plus les sous-titres. Mettez la vidéo en pause puis relancez la traduction."; fail(detail); throw new Error(detail); }
       const next = sequence++;
-      socket.send(JSON.stringify({...message.cue, type: "text.chunk", token, sequence: next}));
+      socket.send(JSON.stringify(message.type === "offscreen.flush"
+        ? {type: "text.flush", token, sequence: next, position: message.position}
+        : {...message.cue, type: "text.chunk", token, sequence: next}));
       sentAt.set(next, Date.now()); pending++;
       if (pending === 3) report("Le moteur prend du retard sur les sous-titres : mettez la vidéo en pause.");
       if (pending === 1) watchForReply(generation);
@@ -47,11 +56,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
-async function start(message: { streamId: string; tabId: number; settings: Record<string, string> }) {
+async function start(message: { streamId: string; tabId: number; settings: Record<string, string | boolean> }) {
   stop();
   const run = generation;
   activeTabId = message.tabId;
-  inputMode = message.settings.inputMode ?? "audio";
+  inputMode = String(message.settings.inputMode ?? "audio");
   if (inputMode === "audio") {
     const captured = await navigator.mediaDevices.getUserMedia({
       audio: { mandatory: { chromeMediaSource: "tab", chromeMediaSourceId: message.streamId } } as MediaTrackConstraints,

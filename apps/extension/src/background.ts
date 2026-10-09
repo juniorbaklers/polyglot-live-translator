@@ -35,7 +35,7 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.15.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.16.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
@@ -46,7 +46,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
       await ensureContent(message.tabId);
       await ensureOffscreenDocument();
-      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections"]);
+      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections", "overlayReadingMode"]);
+      if (!settings.inputMode || settings.inputMode === "auto") {
+        const probe = await chrome.tabs.sendMessage(message.tabId, {type: "captions.probe", sourceLanguage: settings.sourceLanguage ?? "auto"});
+        settings.inputMode = probe?.ok ? "captions" : "audio";
+      }
+      settings.translateDrafts = settings.overlayReadingMode === "progressive";
       const streamId = settings.inputMode === "captions" ? "" : await new Promise<string>((resolve, reject) => {
         chrome.tabCapture.getMediaStreamId({ targetTabId: message.tabId }, (id) => {
           if (chrome.runtime.lastError || !id) reject(new Error(chrome.runtime.lastError?.message ?? "Flux audio indisponible"));
@@ -129,11 +134,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })().catch((error) => sendResponse({ ok: false, error: String(error) }));
     return true;
   }
-  if (message.type === "caption.cue") {
+  if (message.type === "reading.change") {
+    (async () => {
+      const active = await activeCapture();
+      if (!active || active.stopping || _sender.tab?.id !== active.tabId) { sendResponse({ok: true}); return; }
+      sendResponse(await chrome.runtime.sendMessage({type: "offscreen.reading", target: "offscreen", translateDrafts: message.translateDrafts === true}));
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
+    return true;
+  }
+  if (message.type === "caption.cue" || message.type === "caption.flush") {
     (async () => {
       const active = await activeCapture();
       if (!active || active.stopping || active.inputMode !== "captions" || _sender.tab?.id !== active.tabId) throw new Error("Session de sous-titres inactive");
-      const response = await chrome.runtime.sendMessage({type: "offscreen.text", target: "offscreen", cue: message.cue});
+      const response = await chrome.runtime.sendMessage({type: message.type === "caption.flush" ? "offscreen.flush" : "offscreen.text", target: "offscreen", cue: message.cue, position: message.position});
       sendResponse(response);
     })().catch(error => sendResponse({ok: false, error: String(error)}));
     return true;
