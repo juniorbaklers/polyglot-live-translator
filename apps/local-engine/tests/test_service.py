@@ -95,6 +95,33 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             await self.send(socket, {"type":"audio.chunk","token":token,"data":"YQ=="})
             self.assertEqual((await self.receive(socket))['type'], 'error')
 
+    async def test_final_only_flush_and_live_reading_change(self):
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type":"session.start", "token":token, "options":{
+                "inputMode":"captions", "sourceLanguage":"en", "translateDrafts":False}})
+            await self.receive(socket)
+            await self.send(socket, {"type":"text.chunk", "token":token, "text":"A map", "language":"en", "start":0, "end":2})
+            draft = await self.receive(socket)
+            self.assertEqual(draft['translation'], '')
+            await self.receive(socket)
+            self.assertEqual(self.engine.calls, [])
+            await self.send(socket, {"type":"text.flush", "token":token, "position":2.75, "sequence":9})
+            final = await self.receive(socket)
+            self.assertEqual(final['id'], draft['id'])
+            self.assertTrue(final['final'])
+            self.assertEqual((await self.receive(socket))['sequence'], 9)
+            self.assertEqual(len(self.engine.calls), 1)
+            await self.send(socket, {"type":"text.flush", "token":token, "position":3})
+            self.assertEqual((await self.receive(socket))['type'], 'audio.ack')
+            await self.send(socket, {"type":"session.reading", "token":token, "translateDrafts":True})
+            await self.send(socket, {"type":"text.chunk", "token":token, "text":"Another", "language":"en", "start":4, "end":6})
+            self.assertEqual((await self.receive(socket))['translation'], 'Traduit : Another')
+            await self.receive(socket)
+            for invalid in (True, -1, float('nan')):
+                await self.send(socket, {"type":"text.flush", "token":token, "position":invalid})
+                self.assertEqual((await self.receive(socket))['type'], 'error')
+
     async def test_caption_rejects_invalid_ranges_languages_and_oversized_preferences(self):
         async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)

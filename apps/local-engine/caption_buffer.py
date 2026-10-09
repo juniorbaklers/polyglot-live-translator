@@ -4,8 +4,9 @@ import uuid
 
 
 class CaptionBuffer:
-    def __init__(self, translate, translate_final=None, reset_context=None):
+    def __init__(self, translate, translate_final=None, reset_context=None, translate_drafts=True):
         self.translate = translate
+        self.translate_drafts = translate_drafts
         self.translate_final = translate_final
         self.reset_context = reset_context
         self.last_cue = None
@@ -14,9 +15,12 @@ class CaptionBuffer:
     def result(self, final, bounded=False):
         item = self.pending
         item['revision'] += 1
-        translated = (self.translate_final(item['text'], item['language'], item['target'], bounded)
-                      if final and self.translate_final else
-                      self.translate(item['text'], item['language'], item['target']))
+        translated = ''
+        if final or self.translate_drafts:
+            if final and self.translate_final:
+                translated = self.translate_final(item['text'], item['language'], item['target'], bounded)
+            else:
+                translated = self.translate(item['text'], item['language'], item['target'])
         return {"id": item['id'], "revision": item['revision'], "original": item['text'],
                 "translation": translated,
                 "final": final, "bounded": bounded, "start": item['start'], "end": item['end'],
@@ -29,6 +33,12 @@ class CaptionBuffer:
         result = self.result(True, bounded=True)
         self.pending = None
         return [result]
+
+    def flush_expired(self, position):
+        # A playback clock, not a wall-clock timer: pausing must not split speech.
+        if self.pending is None or position < self.pending["end"] + 0.75:
+            return []
+        return self.finish()
 
     def process(self, text, language, target, start, end):
         events = []

@@ -82,6 +82,17 @@ class RecognitionTests(unittest.TestCase):
         self.recognize(text, end, **kwargs)
         return self.engine.process(b"audio", "en", "fr")
 
+    def test_final_only_recognizes_revisions_but_translates_once(self):
+        self.engine.translate_drafts = False
+        first = self.feed("A map of the", 2.95)[0]
+        self.assertEqual(first["translation"], "")
+        self.translator.hypotheses.assert_not_called()
+        final = self.feed("A map of the world.", 4.9)[0]
+        self.assertEqual(final["id"], first["id"])
+        self.assertTrue(final["final"])
+        self.assertEqual(final["translation"], "Traduit : A map of the world.")
+        self.translator.hypotheses.assert_called_once()
+
     def test_first_chunk_is_displayed_and_same_phrase_is_corrected(self):
         first = self.feed("A map of the see", 2.95)[0]
         self.assertFalse(first["final"])

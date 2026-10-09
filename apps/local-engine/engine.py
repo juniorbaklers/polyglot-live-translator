@@ -110,6 +110,7 @@ class LocalEngine:
         preferences = validate_preferences(options)
         self.session_vocabulary = ", ".join(filter(None, (DOMAINS[preferences["domain"]], preferences["glossary"])))
         self.corrections = preferences["corrections"]
+        self.translate_drafts = options.get("translateDrafts", True)
         self.reset_translation_context()
         self.translation_cache = OrderedDict()
 
@@ -195,7 +196,8 @@ class LocalEngine:
         self.revision += 1
         tokens = set(recognition_tokens(original))
         uncertain = [word for word in self.uncertain_words if tokens.intersection(recognition_tokens(word))]
-        translated = self.translate_text(original, language, target, final=final)
+        translated = (self.translate_text(original, language, target, final=final)
+                      if final or getattr(self, "translate_drafts", True) else "")
         if final:
             self.remember_translation(original, translated, language, target, bounded, uncertain)
         return {"id": f"{self.session_id}-{self.segment_number}",

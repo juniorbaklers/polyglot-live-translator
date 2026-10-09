@@ -64,7 +64,7 @@ test('réafficher injecte le contenu absent et garde la session avec une fenêtr
  chrome.tabs.get=async()=>({id:7,url:'https://video.example'});
  chrome.tabs.update=async()=>({});
  chrome.scripting={executeScript:async options=>{assert.deepEqual(options.files,['content.js']);injected=true;}};
- chrome.tabs.sendMessage=async(tab,message)=>{calls.push(message);if(message.type==='overlay.ping'){if(!injected)throw new Error('Receiving end does not exist');return{ok:true,version:'1.15.0'};}return{ok:true};};
+ chrome.tabs.sendMessage=async(tab,message)=>{calls.push(message);if(message.type==='overlay.ping'){if(!injected)throw new Error('Receiving end does not exist');return{ok:true,version:'1.16.0'};}return{ok:true};};
  const result=await request({type:'overlay.reveal',tabId:7});
  assert.equal(result.ok,true);assert.equal(injected,true);assert.equal(local.outputMode,'both');assert.equal(state.activeCapture.outputMode,'both');
  assert.equal(calls.at(-1).type,'overlay.reveal');assert.equal(calls.at(-1).active,true);
@@ -79,4 +79,37 @@ test('page interdite et ancien contenu donnent une instruction claire',async()=>
  chrome.tabs.sendMessage=async()=>undefined;
  result=await request({type:'overlay.reveal',tabId:7});assert.equal(result.ok,false);assert.match(result.error,/Actualisez/);
  chrome.tabs.sendMessage=originalSend;
+});
+
+test('mode automatique choisit une piste accessible et sinon capture le son',async()=>{
+ const calls=[];let hasCaptions=true,mediaCalls=0;
+ const settings={sourceLanguage:'en',targetLanguage:'fr',inputMode:'auto',overlayReadingMode:'final'};
+ chrome.storage.local={get:async()=>({...settings}),set:async()=>{}};
+ chrome.runtime.ContextType={OFFSCREEN_DOCUMENT:'OFFSCREEN_DOCUMENT'};
+ chrome.runtime.getURL=path=>'chrome-extension://test/'+path;
+ chrome.runtime.getContexts=(_,callback)=>callback([{}]);
+ chrome.offscreen={};
+ chrome.tabCapture={getMediaStreamId:(_,callback)=>{mediaCalls++;callback('audio-stream');}};
+ chrome.tabs.get=async()=>({url:'https://video.example'});
+ chrome.tabs.sendMessage=async(_,message)=>{
+  calls.push(message);
+  if(message.type==='overlay.ping')return{ok:true,version:'1.16.0'};
+  if(message.type==='captions.probe')return{ok:hasCaptions};
+  return{ok:true};
+ };
+ chrome.runtime.sendMessage=async message=>{calls.push(message);return{ok:true};};
+ chrome.action.setBadgeBackgroundColor=async()=>{};
+ delete state.activeCapture;
+ assert.equal((await request({type:'capture.start',tabId:7})).ok,true);
+ assert.equal(mediaCalls,0);assert.equal(state.activeCapture.inputMode,'captions');
+ assert.equal(calls.find(m=>m.type==='offscreen.start').settings.translateDrafts,false);
+ assert.ok(calls.some(m=>m.type==='captions.start'));
+ await request({type:'capture.stop'});
+ hasCaptions=false;calls.length=0;
+ settings.overlayReadingMode='progressive';
+ assert.equal((await request({type:'capture.start',tabId:7})).ok,true);
+ assert.equal(mediaCalls,1);assert.equal(state.activeCapture.inputMode,'audio');
+ assert.equal(calls.find(m=>m.type==='offscreen.start').settings.translateDrafts,true);
+ assert.equal(calls.some(m=>m.type==='captions.start'),false);
+ await request({type:'capture.stop'});
 });
