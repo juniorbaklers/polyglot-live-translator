@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.14.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.15.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -244,4 +244,31 @@ test('choix de lecture immédiat et mémorisé : retirer les brouillons et conse
  assert.equal(root.querySelector('.state-label').textContent,'Finalisée · à relire');
  assert.match(root.querySelector('.phrase').textContent,/Fin de phrase non confirmée/);
  assert.equal(root.querySelector('.translation').textContent,'En cours');dom.window.close();
+});
+
+test('coin de redimensionnement : taille compacte, limites et choix mémorisé',async()=>{
+ const {dom,w,root,saved}=setup();await tick();
+ const host=w.document.getElementById('polyglot-live-subtitles');const grip=root.querySelector('.resize-grip');
+ grip.setPointerCapture=()=>{};
+ const send=(type,x,y,id=7)=>{const e=new w.MouseEvent(type,{clientX:x,clientY:y,button:0});Object.defineProperty(e,'pointerId',{value:id});grip.dispatchEvent(e);};
+ send('pointerdown',760,480);send('pointermove',360,260);
+ assert.equal(host.style.width,'360px');assert.equal(host.style.height,'260px');assert.equal(host.hasAttribute('data-compact'),true);
+ send('pointerup',360,260);await tick();assert.deepEqual(JSON.parse(JSON.stringify(saved().overlayDimensions)),{width:360,height:260});
+ send('pointermove',500,500);assert.equal(host.style.width,'360px');
+ send('pointerdown',360,260);send('pointermove',-500,-500);send('pointercancel',-500,-500);await tick();
+ assert.equal(host.style.width,'320px');assert.equal(host.style.height,'240px');assert.equal(saved().overlayDimensions.height,240);
+ dom.window.close();
+});
+
+test('petite fenêtre : remonter à la molette garde la relecture malgré les nouveaux passages',async()=>{
+ const {dom,w,receive,root}=setup('<body></body>',{overlayDimensions:{width:360,height:260}});await tick();
+ for(let i=0;i<4;i++) receive({type:'overlay.subtitle',id:`compact-${i}`,revision:1,final:true,original:`Source ${i}`,translation:`Texte ${i}`});
+ const log=root.querySelector('.transcript');log.scrollTop=25;
+ log.dispatchEvent(new w.WheelEvent('wheel',{deltaY:-10}));
+ receive({type:'overlay.subtitle',id:'next',revision:1,final:true,original:'Next',translation:'Suivant'});
+ assert.equal(log.scrollTop,25);assert.equal(root.querySelectorAll('.phrase').length,4);
+ assert.match(root.querySelector('[data-history-live]').textContent,/\(\+1\)/);
+ root.querySelector('[data-history-live]').click();assert.equal(root.querySelectorAll('.phrase').length,5);
+ assert.equal([...root.querySelectorAll('.translation')].at(-1).textContent,'Suivant');
+ dom.window.close();
 });
