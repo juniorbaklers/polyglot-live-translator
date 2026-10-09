@@ -1,3 +1,5 @@
+MISE À JOUR 1.18 : lire MISE_A_JOUR_1_18.txt. Mettre à jour le moteur ET l’extension.
+
 MISE À JOUR 1.17 : lire MISE_A_JOUR_1_17.txt. Mettre à jour le moteur ET l’extension.
 
 MISE À JOUR 1.16.0 : moteur ET extension obligatoires (protocole v6).
