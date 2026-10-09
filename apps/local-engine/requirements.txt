@@ -1,0 +1,4 @@
+faster-whisper==1.2.1
+argostranslate==1.11.0
+websockets==16.0
+psutil==7.2.2

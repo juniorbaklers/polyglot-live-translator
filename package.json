@@ -8,6 +8,8 @@
     "build:desktop": "pnpm --filter @polyglot/desktop tauri build",
     "build:extension": "pnpm --filter @polyglot/extension build",
     "typecheck": "pnpm -r typecheck",
-    "package:extension": "pnpm build:extension && cd apps/extension/dist && zip -r ../polyglot-extension.zip ."
+    "package:extension": "pnpm build:extension && cd apps/extension/dist && zip -r ../polyglot-extension.zip .",
+    "test:extension": "pnpm build:extension && node --test apps/extension/tests/*.test.mjs",
+    "package:local": "pnpm build:extension && python scripts/package_extension.py"
   }
 }

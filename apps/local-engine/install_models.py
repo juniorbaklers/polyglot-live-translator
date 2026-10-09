@@ -1,0 +1,51 @@
+"""Installation initiale uniquement : télécharge les modèles libres nécessaires."""
+from pathlib import Path
+from languages import LANGUAGES, MODEL_PAIRS, SAMPLE_TEXTS
+
+ROOT = Path(__file__).resolve().parent
+
+
+def install_translation_models(packages):
+    packages.update_package_index()
+    available = packages.get_available_packages()
+    installed = {(p.from_code, p.to_code) for p in packages.get_installed_packages()}
+    for source, target in MODEL_PAIRS:
+        if (source, target) in installed:
+            continue
+        package = next((p for p in available if p.from_code == source and p.to_code == target), None)
+        if package is None:
+            raise RuntimeError(f"Modèle {source} → {target} indisponible dans le catalogue Argos.")
+        print(f"Téléchargement : {source} → {target}", flush=True)
+        packages.install_from_path(package.download())
+
+
+def main():
+    import os
+    os.environ["ARGOS_MODEL_PROVIDER"] = "OPENNMT"
+    os.environ["ARGOS_DEVICE_TYPE"] = "cpu"
+    from faster_whisper import WhisperModel
+    import argostranslate.package
+    from resources import detect_resources, choose_profile
+    profile = choose_profile(detect_resources())
+    names = ["tiny", "base"] + (["small"] if profile.model == "small" else [])
+    for name in names:
+        print(f"Téléchargement du modèle de transcription Whisper {name}…", flush=True)
+        WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=profile.threads,
+                     download_root=str(ROOT / "models"))
+    print("Installation des traductions anglais / français / espagnol / chinois simplifié…", flush=True)
+    install_translation_models(argostranslate.package)
+    from engine import LocalEngine
+    engine = LocalEngine()
+    # Précharge aussi les détecteurs de phrases et les traductions par langue pivot.
+    for source, text in SAMPLE_TEXTS.items():
+        for target in LANGUAGES - {source}:
+            translator = engine.languages[source].get_translation(engine.languages[target])
+            if translator is None:
+                raise RuntimeError(f"Traduction {source} → {target} non installée")
+            translator.translate(text)
+    (ROOT / "installation-ok.txt").write_text("Modèles locaux installés.\n", encoding="utf-8")
+    print("Installation terminée. Vous pouvez lancer DEMARRER.cmd.", flush=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,48 @@
+POLYGLOT — ESSAI RÉEL DU MOTEUR LÉGER
+
+Le diagnostic utilisateur indique torch 506,1 Mo et spacy 99,3 Mo.
+Cette variante exécute les mêmes modèles Argos avec CTranslate2 et les
+mêmes tokeniseurs, sans importer Stanza, spaCy ou PyTorch. Whisper est conservé.
+Elle ne supprime pas automatiquement les bibliothèques de votre moteur actuel.
+Le gain final et la compatibilité Windows ne sont pas encore mesurés ici.
+
+INSTALLATION DANS LE DOSSIER ACTUEL
+1. Exportez vos textes. Arrêtez le moteur actuel avant de remplacer les fichiers.
+   Si le démarrage automatique est actif : DESACTIVER_DEMARRAGE_AUTO.cmd,
+   puis redémarrez Windows. Cela évite deux moteurs sur le même port.
+2. Décompressez le ZIP dans un dossier temporaire. Sauvegardez les fichiers
+   Python/CMD de votre moteur actuel et votre VOCABULAIRE.txt personnalisé.
+3. Copiez le contenu de moteur-local dans votre moteur actuel, qui contient
+   .venv et models. Remplacez les fichiers proposés, conservez .venv, models
+   et votre VOCABULAIRE.txt. L'extension du navigateur reste celle installée.
+4. Double-cliquez sur INSTALLER_LEGER.cmd (Internet nécessaire).
+   Le script crée .venv-leger séparément. Cela prend provisoirement PLUS
+   de place, car .venv reste intact pour permettre le retour à l'ancien moteur.
+5. Le script compare les traductions de textes de contrôle avec votre moteur
+   actuel, en utilisant ses modèles déjà téléchargés. Si la comparaison
+   échoue, l'essai s'arrête : utilisez DEMARRER.cmd et transmettez le rapport.
+6. Si la comparaison réussit : double-cliquez sur DEMARRER_LEGER.cmd,
+   puis testez la traduction de votre vidéo habituelle dans l'extension.
+7. Envoyez RAPPORT_MOTEUR_LEGER.json et indiquez si la vidéo fonctionne.
+   Pour mesurer le poids de l'essai, clic droit sur .venv-leger > Propriétés.
+
+RETOUR AU MOTEUR NORMAL
+Fermez DEMARRER_LEGER.cmd puis lancez DEMARRER.cmd. Si souhaité,
+ACTIVER_DEMARRAGE_AUTO.cmd réactive le moteur normal à l'ouverture de session.
+Le démarrage automatique et les commandes ordinaires restent sur .venv.
+Ne supprimez pas .venv : la promotion du moteur léger en démarrage automatique
+et le retrait de l'ancien environnement viendront APRÈS validation de l'essai.
+
+LIMITES ET VALIDATION
+73 tests Python locaux : 72 réussis et 1 intégration Windows non exécutée.
+Les tests de l'adaptateur emploient des doubles du décodeur : les modèles
+réels doivent être comparés sur votre PC par le script. Les textes de contrôle
+ne garantissent pas la précision de toutes les vidéos ou la latence.
+La version légère utilise uniquement package/tokenizer d'Argos 1.11.0,
+installé avec --no-deps ; son chemin translate/sbd n'est pas utilisé.
+Les métadonnées de distribution Argos déclarent encore les dépendances
+complètes : pip check signale donc ces extras absents dans l'environnement
+léger. Ce profil sélectif appartient à Polyglot ; ce n'est pas l'installation
+complète standard d'Argos. N'y lancez pas un pip install argostranslate
+normal, qui réinstallerait les grosses dépendances.
+Aucun modèle ou moteur factice, service en ligne, abonnement ni code.

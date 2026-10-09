@@ -1,0 +1,108 @@
+POLYGLOT 1.13.0 — V18 — EXTENSION RÉELLE ET MOTEUR LOCAL GRATUIT
+
+METTRE À JOUR L’INSTALLATION EXISTANTE
+Cette mise à jour concerne le moteur et l’extension. Suivez les étapes ci-dessous en conservant vos modèles et votre environnement.
+1. Arrêtez la traduction, puis fermez la fenêtre DEMARRER.cmd. Si le moteur tourne en arrière-plan, lancez DESACTIVER_DEMARRAGE_AUTO.cmd puis fermez et rouvrez votre session Windows avant de remplacer les fichiers. Enregistrez votre travail auparavant.
+2. Décompressez l’archive.
+3. Copiez TOUS les fichiers du dossier moteur-local dans votre dossier moteur-local actuel, en remplaçant les fichiers portant le même nom.
+   Conservez vos dossiers .venv et models. Gardez votre VOCABULAIRE.txt personnalisé avant de remplacer les fichiers.
+   caption_buffer.py, preferences.py, contextual_translation.py et languages.py sont nécessaires : copiez-les aussi.
+   V18 : relancez INSTALLER.cmd une fois avec Internet pour installer les modèles chinois. Le moteur et l’extension doivent être mis à jour ensemble.
+4. Copiez TOUT le dossier extension, y compris chunks, dans le dossier de votre extension actuelle.
+5. Ouvrez chrome://extensions ou edge://extensions et cliquez sur Recharger. Version attendue : 1.13.0.
+6. Actualisez la page vidéo. Choisissez le démarrage automatique ci-dessous ou lancez DEMARRER.cmd / DEMARRER_PRECISION.cmd manuellement. Aucun code à saisir.
+   Depuis la V13, aucun nouveau modèle ni dépendance n’est nécessaire. Depuis une version antérieure, relancez INSTALLER.cmd une fois pour installer tiny et la détection des ressources.
+
+PREMIÈRE INSTALLATION
+Installez Python 3.11 64 bits avec son lanceur py, puis double-cliquez sur moteur-local/INSTALLER.cmd. Internet est nécessaire pour télécharger les dépendances et les modèles.
+Ensuite lancez DEMARRER.cmd. Dans chrome://extensions ou edge://extensions, activez le Mode développeur puis Charger l’extension non empaquetée et sélectionnez le dossier extension (contenant manifest.json).
+Modèle small facultatif : INSTALLER_PRECISION.cmd, puis DEMARRER_PRECISION.cmd. Ce mode peut être plus lent.
+
+DÉMARRAGE AUTOMATIQUE WINDOWS — À ACTIVER UNE FOIS
+Après mise à jour, fermez l’ancien moteur CMD avant de commencer. Gardez moteur-local dans son dossier définitif, pas à l’intérieur du ZIP.
+1. Double-cliquez sur ACTIVER_DEMARRAGE_AUTO.cmd dans moteur-local. Il ajoute un raccourci Polyglot Local au démarrage de votre compte Windows et demande le lancement du moteur sans console. Aucun droit administrateur requis.
+2. Aucun code ni bouton Enregistrer : l’extension se connecte directement au moteur local.
+3. Ensuite, à chaque ouverture de session Windows, le moteur démarre en arrière-plan. Attendez le chargement des modèles, ouvrez la vidéo et cliquez sur Démarrer dans l’extension. Chrome impose une action de l’utilisateur pour autoriser la capture de l’onglet : elle ne démarre pas silencieusement à chaque vidéo.
+4. DESACTIVER_DEMARRAGE_AUTO.cmd retire le raccourci. Le moteur déjà lancé continue jusqu’à la fermeture de votre session Windows. Pour arrêter un moteur en arrière-plan, fermez votre session ou terminez le processus pythonw.exe correspondant à ce dossier via le Gestionnaire des tâches ; n’arrêtez pas les autres programmes Python.
+5. Si le moteur ne répond pas, consultez moteur-auto.log ou désactivez l’automatisme, fermez votre session Windows puis utilisez DEMARRER.cmd pour voir les erreurs. Conservez .venv, models et votre vocabulaire lors des mises à jour. Si vous déplacez le dossier moteur-local, relancez l’activation pour corriger le raccourci.
+Option précision : après INSTALLER_PRECISION.cmd, utilisez ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd à la place du lanceur normal. Pour changer un moteur déjà actif, fermez puis rouvrez votre session Windows ; le nouveau mode sera appliqué au prochain démarrage. Le mode précision peut être plus lent.
+Le verrou local empêche deux nouvelles instances dans le même dossier. Le service reste limité à 127.0.0.1, avec contrôle des origines des extensions et jeton de session. Aucun paiement ni téléchargement pendant l’utilisation.
+
+DÉMARRER ET AFFICHER LA FENÊTRE
+Choisissez les langues et Fenêtre de traduction, puis cliquez sur Démarrer la traduction. La connexion au moteur est automatique.
+Si la fenêtre a été masquée, cliquez sur Afficher la fenêtre de traduction : l’historique est conservé. En mode voix seule, ce bouton active aussi l’affichage des sous-titres.
+Les options de vocabulaire, domaines et pistes sont repliées dans Réglages avancés — facultatifs. Aucun réglage avancé n’est nécessaire pour traduire l’audio.
+
+UTILISER LES NOUVEAUTÉS
+- Fluidité : seules les phrases modifiées sont reconstruites dans la fenêtre. Les corrections ouvertes et leur brouillon restent présents à l’arrivée de nouvelles phrases. Le moteur évite une nouvelle reconnaissance pour un extrait entièrement nul, lorsqu’aucune fenêtre non reconnue ne doit être reprise. Les sons faibles non nuls restent analysés. Ce changement ne réduit pas la durée de collecte audio de trois secondes et ne garantit pas un gain de délai sur tous les PC.
+- Finalisée · à relire remplace À vérifier : il s’agit d’un texte déjà finalisé avec une reconnaissance incertaine ou une fin de phrase non confirmée, pas d’un traitement en attente. Aucun état ne garantit une traduction correcte à 100 %.
+- Résumé et quiz gratuits : après Arrêter, ouvrez Transcription complète et export, relisez et corrigez votre texte, puis dépliez Résumé et quiz gratuits. Choisissez Traduction relue ou Texte original relu. Résumé sélectionne jusqu’à six phrases du texte ; il ne reformule pas et peut omettre des éléments importants. Quiz crée jusqu’à cinq extraits à compléter, avec réponse, vérification et passage d’origine. Ce quiz aide à réviser les termes ; il ne mesure pas toute la compréhension. Exporter la fiche TXT inclut le corrigé. Tout est calculé dans le navigateur sans API ni nouveau modèle. Une modification du texte efface la fiche précédente : générez-la à nouveau. Les erreurs du texte peuvent se retrouver dans la fiche.
+- Transcription complète et export : bouton en bas de la fenêtre. Toutes les phrases finalisées de la session sont conservées, même si seules les 150 dernières apparaissent pendant la lecture. Après Arrêter, relisez et retouchez le texte original et la traduction. Exportez en TXT original, traduction ou bilingue. Les retouches du document complet sont incluses dans ces TXT ; elles ne réentraînent pas le moteur et ne modifient pas les repères SRT. Pour le SRT, utilisez Corriger sur les phrases. Il n’y a pas de correction automatique garantie. Exportez avant une nouvelle session, une actualisation ou la fermeture de la page : le document reste en mémoire dans cette page uniquement.
+- Présentation : fenêtre et commandes modernisées ; les réglages avancés restent facultatifs. Les phrases indiquent En cours, Finalisée, À vérifier ou Corrigée. Ces états ne sont pas des scores de précision. Copier copie une traduction finalisée.
+- Les fragments successifs des pistes accessibles sont regroupés pour fournir plus de contexte. Une proposition apparaît immédiatement et peut être révisée. Sans ponctuation, la voix peut attendre le fragment suivant ou la fin de session ; les groupes sont limités à 12 secondes.
+- En audio, une courte pause dans une phrase sans ponctuation conserve le contexte ; une pause plus longue finalise le passage. Cela peut allonger le délai de finalisation. Les traductions identiques sont mémorisées pendant la session, sans changer le modèle.
+- Source du texte : Reconnaître le son conserve le fonctionnement audio progressif.
+- Sous-titres accessibles : activez une piste du lecteur et choisissez la langue originale. Le moteur traduit le texte de cette piste sans reconnaissance audio. Certains sites, notamment les lecteurs propriétaires, n’exposent pas leurs sous-titres : choisissez alors Reconnaître le son. Pas de récupération de pistes privées ni de contournement.
+- Domaine : Général, Informatique/DevOps, Géographie/QGIS, Commerce/comptabilité.
+- Glossaire : noms propres, acronymes et termes, 1500 caractères maximum. Enregistrer les réglages, puis démarrer une nouvelle session. Ce sont des indications, pas des substitutions forcées ni un entraînement.
+- Corriger : sur une phrase finalisée, modifiez l’affichage original et la traduction, puis Enregistrer localement. La traduction corrigée sera réutilisée pour le texte initial identique dans les mêmes langues à la prochaine session. La modification de l’original concerne l’affichage ; ajoutez les termes mal reconnus au glossaire. Maximum 100 corrections, consultables et effaçables dans le popup.
+- Les mots reconnus avec une probabilité inférieure à 0,5 sont signalés dans l’original et dans une note. Cela ne mesure pas la fiabilité de la traduction ; un mot non signalé peut être erroné.
+- Calcul indique le traitement du moteur. Attente + calcul mesure la réponse après envoi ; en audio, il faut ajouter la collecte (jusqu’à environ 3 secondes) pour estimer le délai total. Le compteur montre les extraits en attente.
+- Paramètres de la fenêtre (roue dentée) : Exporter TXT ou SRT. Export de toutes les phrases finalisées de la session avec leurs corrections par phrase. SRT audio : temps relatifs au début de capture, approximatifs pour la parole, à ajuster pour synchroniser avec une vidéo. SRT des pistes : temps fournis par le lecteur. Pas de stockage automatique de l’historique après fermeture de la page.
+- Réécouter : disponible avec les repères d’une piste vidéo accessible.
+
+MESURER LA PRÉCISION SUR VOTRE ORDINATEUR
+Préparez un extrait audio de 10 à 60 secondes et un fichier reference.txt contenant exactement les paroles. Ouvrez un terminal dans moteur-local :
+.venv\Scripts\python.exe benchmark.py extrait.wav reference.txt --source en --target fr
+Le rapport rapport-precision.json contient le taux d’erreurs de reconnaissance et le temps de calcul. Il ne mesure pas la qualité de traduction. Pour tester small dans CMD : set POLYGLOT_MODE=precision puis relancer la commande.
+
+DEVOPS
+Le fichier DEVOPS.md explique les contrôles GitHub Actions, les archives et le retour à une ancienne version. Aucun compte Azure ni abonnement n’est requis pour utiliser l’extension.
+
+LIMITES
+Les tests automatiques contrôlent le protocole, l’interface et les régressions avec des modèles simulés uniquement dans les tests. Les modèles réels restent à mesurer sur votre PC. Aucun gain de précision chiffré n’est promis. La capture audio s’arrête si le moteur accumule trop d’extraits. Les premières sous-titres peuvent être corrigés à mesure que la phrase arrive. La voix attend une phrase finalisée.
+Les langues proposées sont anglais, français, espagnol et chinois simplifié. Pour le chinois, installer ses modèles avec INSTALLER.cmd. Les modèles, corrections et réglages restent locaux ; aucun service payant de traduction n’est appelé.
+
+ADAPTATION AUTOMATIQUE — V14
+Le moteur choisit au démarrage selon les cœurs accessibles et la RAM disponible : tiny sous 3 Gio ou moins de 3 cœurs, base pour les configurations intermédiaires, small à partir de 6 Gio disponibles et 6 cœurs si installé. Le mode précision demande small à partir de 4 Gio et 4 cœurs ; il est limité sur les petites machines. Si small manque, base puis tiny sont essayés ; le modèle léger est également essayé si le chargement manque de mémoire. L’installation ajoute small automatiquement seulement sur les machines du profil supérieur. INSTALLER_PRECISION.cmd permet de l’ajouter ultérieurement.
+Les seuils sont prudents, pas un benchmark de vitesse. Le profil reste fixe pendant la session : fermer des applications et relancer le moteur pour refaire la détection. Aucun plafond strict de RAM ni amélioration automatique du document final n’est ajouté. Le moteur de traduction Argos reste inchangé. Les vieux processeurs incompatibles avec les bibliothèques, Windows 32 bits et une RAM insuffisante ne sont pas garantis.
+Si le moteur est en arrière-plan : désactivez son démarrage, fermez puis rouvrez la session Windows avant de remplacer les fichiers ; relancez INSTALLER.cmd et réactivez ACTIVER_DEMARRAGE_AUTO.cmd. Ne supprimez ni models ni .venv.
+
+CONNEXION SANS CODE — V14
+Le champ du code et le bouton d’enregistrement sont supprimés. Les anciens codes ne sont plus lus par le moteur ou l’extension. Moteur et extension 1.9.0 doivent être mis à jour ensemble, puis le moteur actif doit être redémarré. Un moteur ancien qui demande encore un code déclenche un message de mise à jour, pas un champ de saisie. AFFICHER_CODE.cmd n’est plus livré ni nécessaire ; une ancienne copie affiche simplement que le code n’est plus requis.
+Le service écoute uniquement 127.0.0.1 et refuse les pages web ordinaires, les origines absentes et les identifiants d’extension ne correspondant pas à l’origine. Un jeton aléatoire est créé par connexion et une seule connexion de traduction est acceptée simultanément. Ce contrôle ne remplace pas un secret face à un autre programme local capable de fabriquer une origine ou à une autre extension : seules des extensions de confiance doivent être installées. Le site web n’obtient pas l’audio ; Chrome exige toujours un clic utilisateur pour la capture.
+
+RELIRE LES LIGNES PRÉCÉDENTES — V15
+Les boutons Lignes précédentes et Revenir au direct restent visibles au-dessus du texte. Le premier remonte dans la fenêtre ; au début d’une page de 150 phrases, un nouveau clic charge une page plus ancienne avec chevauchement. La molette permet aussi de remonter. Pendant la relecture, la page affichée est conservée tandis que la traduction continue ; le compteur +N indique les nouvelles lignes hors de cette page. Revenir au direct affiche les dernières phrases et réactive le suivi automatique. Une nouvelle session réinitialise la relecture. Le document complet et les exports conservent toute la session.
+Depuis la V14 : mettre à jour uniquement le dossier extension, cliquer sur Recharger dans Chrome/Edge et actualiser la page vidéo après avoir exporté les textes à conserver. Moteur et protocole v5 inchangés : aucun nouveau modèle, aucune réinstallation du moteur ni modification du démarrage automatique nécessaire.
+
+DIMENSIONS DE LA FENÊTRE — V16
+Les boutons −/+ du bandeau réduisent et agrandissent la fenêtre, sans changer la taille des caractères. Dimensions choisies par ces boutons mémorisées localement et limitées à l’écran. Le coin inférieur droit permet aussi un redimensionnement manuel. Pour les caractères seulement : Paramètres → Taille du texte. Mise à jour extension seulement depuis la V14, comme pour la V15.
+
+MISE À JOUR V18 / 1.13.0 DEPUIS V14 À V17
+1. Arrêtez la traduction et exportez les textes à conserver.
+2. Copiez les fichiers du dossier extension dans votre dossier extension existant.
+3. Copiez les fichiers du dossier moteur-local dans votre dossier moteur-local existant,
+   en remplaçant les fichiers proposés. Conservez vos dossiers models et .venv.
+   Fichiers nécessaires : contextual_translation.py et languages.py. Pour ajouter le chinois, relancez INSTALLER.cmd avec Internet après avoir copié les fichiers du moteur. Les modèles déjà présents sont conservés.
+   Conservez une copie de VOCABULAIRE.txt si vous l'avez personnalisé.
+4. Redémarrez le moteur. Avec le démarrage automatique déjà actif : redémarrez Windows.
+   Pour un lancement manuel, fermez l'ancien moteur puis ouvrez DEMARRER.cmd.
+5. Dans chrome://extensions ou edge://extensions : Recharger. Version attendue : 1.13.0.
+6. Actualisez la vidéo puis démarrez la traduction.
+La fenêtre conserve ses boutons de taille, son historique et ses exports. Provisoire indique
+une ligne encore modifiable par le moteur ; Finalisée indique la fin du traitement de ce
+passage, sans garantir que sa traduction est exacte.
+La reprise contextuelle est une première version locale : comparez ses résultats sur vos
+vidéos. Aucun moteur cloud, clé API ou paiement n'est nécessaire.
+
+UTILISER LE CHINOIS — V18
+Après installation des modèles et redémarrage du moteur :
+- Vidéo en mandarin : Langue de la vidéo → Chinois simplifié ; Traduire en → Français.
+- Traduction vers le chinois : choisissez Chinois simplifié dans Traduire en.
+- Automatique peut reconnaître le mandarin ; sélectionnez zh explicitement si la détection se trompe.
+- Français et espagnol ↔ chinois passent par l’anglais, ce qui peut être plus lent et
+  transmettre des erreurs d’une traduction à l’autre. Le contexte direct ne s’applique
+  pas à ces routes intermédiaires. Qualité à vérifier sur vos vidéos.
+- Le chinois traditionnel et tous les dialectes ne sont pas pris en charge séparément.
+- Aucun code ni abonnement. Internet nécessaire à l’installation ; traduction locale ensuite.

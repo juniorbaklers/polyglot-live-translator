@@ -1,0 +1,26 @@
+POLYGLOT 1.15.0 — V21 — FENÊTRE DE TRADUCTION
+1. Arrêtez la traduction et exportez les textes à conserver avant de recharger.
+2. Décompressez cette archive et copiez tout le contenu du dossier extension dans le dossier de votre extension actuelle, en remplaçant les fichiers et en conservant le sous-dossier chunks.
+3. Dans chrome://extensions ou edge://extensions, cliquez sur Recharger. Version attendue : 1.15.0.
+4. Actualisez la page vidéo, puis cliquez sur Démarrer la traduction.
+Le chinois et la reprise avec contexte nécessitent le moteur V18 (languages.py, engine.py, contextual_translation.py,
+caption_buffer.py, server.py et preferences.py), puis son redémarrage. Utilisez l’archive
+complète Polyglot_Chinois_V18.zip pour cette mise à jour. Relancez INSTALLER.cmd une fois avec Internet pour télécharger les modèles chinois. Conservez models, .venv et votre
+VOCABULAIRE.txt personnalisé. L’archive extension seule actualise seulement l’affichage.
+
+Lignes précédentes remonte dans le texte. La molette fonctionne aussi. Au début d’une page de 150 phrases, un nouveau clic charge des phrases plus anciennes. La traduction continue pendant la relecture sans faire descendre la fenêtre. Revenir au direct affiche les dernières phrases et réactive le défilement automatique. Le compteur +N indique les nouvelles phrases hors de la page affichée.
+Toute la transcription reste accessible dans Transcription complète et export. Une nouvelle session efface l’historique de la page : exportez avant de recommencer, actualiser ou fermer.
+
+Les boutons − et + en haut de la fenêtre réduisent ou agrandissent ses dimensions. La taille choisie avec ces boutons est enregistrée pour les prochaines pages et sessions. La fenêtre reste limitée à l’écran disponible et est replacée dans l’écran si nécessaire. Son coin inférieur droit permet également de tirer pour ajuster les dimensions. Pour changer uniquement la taille des caractères, utilisez Paramètres → Taille du texte.
+
+Lecture stable : par défaut seules les phrases finalisées sont affichées. Dans la fenêtre, Paramètres (roue dentée) → Lecture permet de retrouver le texte provisoire puis finalisé. Le choix est mémorisé et appliqué immédiatement. Les brouillons restent internes et la capture continue. Attente supplémentaire liée à la finalisation, sans délai fixe ajouté et sans garantie de phrase complète ou correcte ; un extrait interrompu reste signalé « à relire ». Cette modification de lecture nécessite seulement la mise à jour de l’extension, pas une réinstallation du moteur.
+
+INTERFACE COMPACTE V21
+Faites glisser le coin inférieur droit (petites lignes diagonales) pour réduire
+ou agrandir la fenêtre sans les boutons +/−. La taille est mémorisée.
+En petit format, les commandes occupent moins de place pour conserver une zone
+de lecture. Remontez à la molette ou cliquez « Lignes précédentes » : les nouveaux
+passages ne ramènent plus la lecture en bas. « Revenir au direct » affiche la suite.
+L'historique et la transcription complète restent disponibles jusqu'au rechargement
+de la page. Exportez votre session avant de recharger l'extension.
+Mise à jour extension seulement : gardez votre moteur V20 et ses modèles.

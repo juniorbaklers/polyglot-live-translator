@@ -1,0 +1,39 @@
+POLYGLOT — PASSAGES STABLES (V20, moteur local)
+
+Cette mise à jour complète l'extension V19 (1.14.0).
+Elle concerne la reconnaissance audio en anglais, français et espagnol.
+Les pistes de sous-titres disponibles et le chinois conservent leur découpage actuel.
+
+INSTALLATION
+1. Arrêtez la traduction et exportez votre transcription si nécessaire.
+2. Arrêtez le moteur actuellement lancé. Fermez sa fenêtre de démarrage ;
+   si le moteur tourne en arrière-plan, utilisez le Gestionnaire des tâches
+   pour arrêter le processus Python du moteur Polyglot (pas tous les Python).
+3. Copiez moteur-local/engine.py de cette archive dans votre dossier
+   moteur-local actuel, en remplaçant seulement engine.py.
+4. Gardez vos modèles, votre environnement Python et votre vocabulaire.
+   Aucun téléchargement de modèle ni INSTALLER.cmd nécessaire.
+5. Relancez votre moteur avec votre lanceur habituel.
+6. Dans l'extension V19 : paramètres > Lecture > Phrases finalisées uniquement.
+
+COMPORTEMENT
+Une phrase ponctuée peut être affichée dès que son préfixe est stable.
+Certaines virgules et certains points-virgules permettent aussi une coupure :
+6 à 24 mots, ponctuation répétée dans deux reconnaissances, au moins 3 mots
+reconnus après la coupure et pas de mot reconnu avec faible probabilité
+avant la coupure. Les introductions comme « si », « quand », « une fois »
+et les fins manifestement incomplètes attendent la suite.
+
+La suite de l'audio est conservée, avec un nouvel identifiant d'affichage.
+Le contexte précédent reste disponible pour la reconnaissance et la traduction
+sur les routes directes déjà prises en charge. Les lignes publiées restent stables.
+Il s'agit de règles prudentes, pas d'une analyse sémantique complète.
+
+LIMITES
+Ce réglage n'est pas un temps réel sans délai. Il nécessite deux reconnaissances
+successives ; le délai dépend de la capture, du processeur et des modèles.
+Une phrase ambiguë peut toujours attendre la pause ou la limite de fenêtre.
+La traduction d'une proposition courte peut perdre du contexte futur.
+Le résultat et le confort de lecture doivent être évalués sur votre vidéo.
+Les tests automatiques utilisent des reconnaissances et traducteurs contrôlés,
+pas les modèles réels sur votre ordinateur Windows.

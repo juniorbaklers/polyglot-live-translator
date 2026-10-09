@@ -1,0 +1,46 @@
+"""Lanceur Windows sans console, avec journal rotatif et verrou d'instance."""
+import asyncio
+import logging
+import os
+import sys
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+
+
+class LogStream:
+    encoding = "utf-8"
+    def isatty(self): return False
+    def __init__(self, logger): self.logger = logger
+    def write(self, text):
+        size = len(text)
+        text = text.strip()
+        for line in text.splitlines():
+            if line and not line.startswith('Code d’association :'):
+                self.logger.info(line)
+        return size
+    def flush(self): pass
+
+
+def run():
+    os.chdir(ROOT)
+    os.environ['POLYGLOT_MODE'] = 'precision' if '--precision' in sys.argv else 'auto'
+    logger = logging.getLogger('polyglot-launcher'); logger.setLevel(logging.INFO); logger.propagate = False
+    handler = RotatingFileHandler(ROOT / 'moteur-auto.log', maxBytes=1_000_000, backupCount=1, encoding='utf-8')
+    handler.setFormatter(logging.Formatter('%(asctime)s %(message)s')); logger.addHandler(handler)
+    sys.stdout = sys.stderr = LogStream(logger)
+    try:
+        from server import main
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+    except RuntimeError as error:
+        logger.error(str(error))
+    except Exception:
+        logger.exception('Démarrage automatique impossible')
+    finally:
+        handler.close()
+
+
+if __name__ == '__main__': run()
