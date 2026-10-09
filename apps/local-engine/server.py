@@ -14,7 +14,7 @@ from languages import LANGUAGES
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v6"
+ENGINE_ID = "polyglot-local-free-v7"
 EXTENSION_ORIGIN = re.compile(r"chrome-extension://[a-p]{32}")
 MAX_AUDIO_BYTES = 2_000_000
 

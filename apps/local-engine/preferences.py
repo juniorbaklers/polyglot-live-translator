@@ -7,6 +7,7 @@ DOMAINS = {
     "informatique": "Python, JavaScript, GitHub, DevOps, API, SQL, Docker, Kubernetes",
     "geographie": "GIS, SIG, FME, ETL, QGIS, raster, vecteur, projection, Sentinel, Landsat, géoréférencement",
     "commerce": "facture, TVA, chiffre d'affaires, bilan, trésorerie, marge",
+    "sondages": "survey, data, raw data, information, organized, unorganized, election, political party, vote, win, lose, BJP, Congress",
 }
 
 
@@ -16,6 +17,9 @@ def validate_preferences(options):
     domain = options.get("domain", "general")
     glossary = options.get("glossary", "")
     corrections = options.get("corrections", [])
+    quality = options.get("recognitionQuality", "balanced")
+    if quality not in ("balanced", "precise"):
+        raise ValueError("Qualité de reconnaissance invalide")
     if domain not in DOMAINS or not isinstance(glossary, str) or len(glossary) > 1500:
         raise ValueError("Domaine invalide ou glossaire trop long (1500 caractères)")
     if not isinstance(corrections, list) or len(corrections) > 100:
@@ -31,7 +35,7 @@ def validate_preferences(options):
         if source not in LANGUAGES or target not in LANGUAGES:
             raise ValueError("Langue de correction invalide")
         clean.append(dict(zip(("original", "translation", "source", "target"), values)))
-    return {"domain": domain, "glossary": glossary.strip(), "corrections": clean}
+    return {"domain": domain, "glossary": glossary.strip(), "corrections": clean, "recognitionQuality": quality}
 
 
 def normalized(text):

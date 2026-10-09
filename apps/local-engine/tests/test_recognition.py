@@ -212,6 +212,18 @@ class RecognitionTests(unittest.TestCase):
         self.feed("Same words", 2.95)
         self.assertEqual(self.translator.hypotheses.call_count, 2)
 
+    def test_precise_decoding_uses_wider_search_with_original_audio(self):
+        self.engine.configure_session({'recognitionQuality':'precise', 'domain':'sondages'})
+        self.feed('Which party will win?', 2.95)
+        args = self.engine.model.transcribe.call_args
+        self.assertEqual(args.kwargs['beam_size'], 5)
+        self.assertEqual(args.kwargs['language'], 'en')
+        self.assertEqual(len(args.args[0]), 48000)
+        self.assertIn('political party', args.kwargs['hotwords'])
+        self.engine.configure_session({})
+        self.feed('More data', 5.95)
+        self.assertEqual(self.engine.model.transcribe.call_args.kwargs['beam_size'], 1)
+
     def test_recognition_settings_preserve_local_context_and_timestamps(self):
         self.feed("Hello", 2.95)
         options = self.engine.model.transcribe.call_args.kwargs

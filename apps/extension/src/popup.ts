@@ -9,7 +9,9 @@ const target = document.querySelector<HTMLSelectElement>("#target")!;
 const inputMode = document.querySelector<HTMLSelectElement>("#input-mode")!;
 const domain = document.querySelector<HTMLSelectElement>("#domain")!;
 const glossary = document.querySelector<HTMLTextAreaElement>("#glossary")!;
-const preferenceKeys = ["inputMode", "domain", "glossary", "corrections"];
+const muteOriginal = document.querySelector<HTMLInputElement>("#mute-original")!;
+const recognitionQuality = document.querySelector<HTMLSelectElement>("#recognition-quality")!;
+const preferenceKeys = ["inputMode", "domain", "glossary", "corrections", "muteOriginal", "recognitionQuality"];
 let capturing = false;
 let captureTabId: number | undefined;
 
@@ -17,6 +19,8 @@ function updateButton() {
   capture.textContent = capturing ? "Arrêter la traduction" : "Démarrer la traduction";
   capture.classList.toggle("stop", capturing);
   source.disabled = target.disabled = inputMode.disabled = domain.disabled = glossary.disabled = capturing;
+  recognitionQuality.disabled = capturing;
+  muteOriginal.disabled = output.value === "subtitles";
   document.querySelector<HTMLButtonElement>("#save-preferences")!.disabled = capturing;
 }
 
@@ -29,6 +33,8 @@ async function restore() {
   inputMode.value = settings.inputMode ?? "auto";
   domain.value = settings.domain ?? "general";
   glossary.value = settings.glossary ?? "";
+  muteOriginal.checked = (activeCapture?.muteOriginal ?? settings.muteOriginal) !== false;
+  recognitionQuality.value = settings.recognitionQuality ?? "balanced";
   renderCorrections(settings.corrections ?? []);
   output.value = outputMode(activeCapture?.outputMode ?? settings.outputMode);
   capturing = Boolean(activeCapture);
@@ -54,11 +60,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 output.addEventListener("change", async () => {
+  output.disabled = true;
   try {
     const response = await chrome.runtime.sendMessage({ type: "output.change", outputMode: output.value });
     if (!response?.ok) throw new Error(response?.error ?? "Choix non enregistré");
     state.textContent = capturing ? "Mode modifié — appliqué aux prochaines traductions" : "Mode de traduction enregistré";
   } catch (error) { state.textContent = String(error); }
+  finally { output.disabled = false; updateButton(); }
+});
+
+muteOriginal.addEventListener("change", async () => {
+  muteOriginal.disabled = true;
+  try {
+    const response = await chrome.runtime.sendMessage({type: "audio.change", muteOriginal: muteOriginal.checked});
+    if (!response?.ok) throw new Error(response?.error ?? "Réglage audio non appliqué");
+    showState(muteOriginal.checked ? "Voix originale coupée pendant la traduction vocale." : "Voix originale audible avec la traduction.");
+  } catch (error) { muteOriginal.checked = !muteOriginal.checked; showState(String(error), true); }
+  finally { updateButton(); }
 });
 
 capture.addEventListener("click", async () => {
@@ -70,7 +88,7 @@ capture.addEventListener("click", async () => {
     if (tabId === undefined) throw new Error("Onglet actif introuvable.");
     if (starting) {
       showState("Ouverture de la fenêtre et connexion au moteur…");
-      await chrome.storage.local.set({ sourceLanguage: source.value, targetLanguage: target.value, outputMode: outputMode(output.value), inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim() });
+      await chrome.storage.local.set({ sourceLanguage: source.value, targetLanguage: target.value, outputMode: outputMode(output.value), inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim(), muteOriginal: muteOriginal.checked, recognitionQuality: recognitionQuality.value });
     }
     const response = await chrome.runtime.sendMessage({ type: starting ? "capture.start" : "capture.stop", tabId });
     if (!response?.ok) throw new Error(response?.error ?? "La capture n’a pas démarré");
@@ -88,7 +106,7 @@ function renderCorrections(items: {original: string; translation: string; source
   items.slice(-10).forEach(item => { const line = document.createElement("p"); line.className = "hint"; line.textContent = `${item.source} → ${item.target} : ${item.original} → ${item.translation}`; list.append(line); });
 }
 document.querySelector<HTMLButtonElement>("#save-preferences")!.onclick = async () => {
-  await chrome.storage.local.set({inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim()});
+  await chrome.storage.local.set({inputMode: inputMode.value, domain: domain.value, glossary: glossary.value.trim(), recognitionQuality: recognitionQuality.value});
   state.textContent = "Réglages enregistrés pour la prochaine session.";
 };
 document.querySelector<HTMLButtonElement>("#clear-corrections")!.onclick = async () => {

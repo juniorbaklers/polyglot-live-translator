@@ -23,6 +23,16 @@ def recognition_tokens(text):
     return re.findall(r"[\u3400-\u9fff]|[^\W_\u3400-\u9fff]+", text.casefold())
 
 
+def translation_input(text, language, domain):
+    # Le domaine est choisi par l'utilisateur. Expliciter ce sens uniquement
+    # dans ce domaine, sans changer la transcription affichée ni inventer des mots mal entendus.
+    if language == "en" and domain == "sondages":
+        return re.sub(r"(?<!political )\bpart(y|ies)\b",
+                      lambda match: "political parties" if match.group(1).lower() == "ies" else "political party",
+                      text, flags=re.IGNORECASE)
+    return text
+
+
 def stable_passage_boundary(prefix, previous, following, language):
     """Frontière courte et prudente, pas un analyseur sémantique.
 
@@ -111,6 +121,8 @@ class LocalEngine:
         self.session_vocabulary = ", ".join(filter(None, (DOMAINS[preferences["domain"]], preferences["glossary"])))
         self.corrections = preferences["corrections"]
         self.translate_drafts = options.get("translateDrafts", True)
+        self.recognition_quality = preferences["recognitionQuality"]
+        self.session_domain = preferences["domain"]
         self.reset_translation_context()
         self.translation_cache = OrderedDict()
 
@@ -150,10 +162,11 @@ class LocalEngine:
                 return item["translation"]
         if language == target:
             return text
+        model_text = translation_input(text, language, getattr(self, "session_domain", "general"))
         translator = self.languages[language].get_translation(self.languages[target])
         if final and self.translation_history:
             try:
-                contextual = contextual_translation(translator, text, self.translation_history)
+                contextual = contextual_translation(translator, model_text, self.translation_history)
             except (RuntimeError, ValueError, TypeError):
                 # Une reprise contextuelle ne doit pas interrompre la capture.
                 contextual = None
@@ -163,7 +176,7 @@ class LocalEngine:
         if key in self.translation_cache:
             self.translation_cache.move_to_end(key)
             return self.translation_cache[key]
-        hypotheses = translator.hypotheses(text, num_hypotheses=1)
+        hypotheses = translator.hypotheses(model_text, num_hypotheses=1)
         value = hypotheses[0].value.strip() if hypotheses else ""
         # Ne pas mémoriser une absence de traduction : une révision peut réessayer.
         if value:
@@ -180,7 +193,7 @@ class LocalEngine:
         # Garder uniquement des passages terminés, courts et reconnus sans
         # mot signalé incertain. Les fragments forcés ne deviennent pas contexte.
         if translated and not bounded and not uncertain and language != target:
-            self.translation_history.append((original, translated))
+            self.translation_history.append((translation_input(original, language, getattr(self, "session_domain", "general")), translated))
             self.translation_history = self.translation_history[-2:]
             while self.translation_history and sum(len(a) + len(b) for a, b in self.translation_history) > 700:
                 self.translation_history.pop(0)
@@ -240,8 +253,10 @@ class LocalEngine:
             return events
         language = source if source != "auto" else self.detected_language
         prompt = " ".join(part for part in (self.vocabulary, getattr(self, "session_vocabulary", ""), self.context) if part) or None
+        # Recherche plus large facultative, sans télécharger ni forcer un modèle lourd.
+        beam = max(self.beam_size, 5) if getattr(self, "recognition_quality", "balanced") == "precise" else self.beam_size
         segments, info = self.model.transcribe(
-            self.window, language=language, beam_size=self.beam_size,
+            self.window, language=language, beam_size=beam,
             temperature=0.0, initial_prompt=prompt, word_timestamps=True,
             hotwords=getattr(self, "session_vocabulary", "") or None,
             vad_filter=True, vad_parameters={"threshold": 0.35, "speech_pad_ms": 400},

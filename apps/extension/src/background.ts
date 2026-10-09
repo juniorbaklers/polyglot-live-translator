@@ -2,7 +2,22 @@
 const OFFSCREEN_PATH = "offscreen.html";
 import { deliverTranslation, outputMode, stopSpeech } from "./output";
 
-interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; inputMode?: string; }
+interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; inputMode?: string; muteOriginal?: boolean; originalTabMuted?: boolean; }
+
+async function applyOriginalAudio(active: ActiveCapture) {
+  const muted = active.muteOriginal === true && active.outputMode !== "subtitles";
+  if (active.inputMode === "captions") {
+    await chrome.tabs.update(active.tabId, {muted: active.originalTabMuted === true || muted});
+  } else {
+    await chrome.runtime.sendMessage({type: "offscreen.audio", target: "offscreen", muteOriginal: muted});
+  }
+}
+
+async function restoreOriginalAudio(active?: ActiveCapture) {
+  if (active?.inputMode === "captions" && typeof active.originalTabMuted === "boolean") {
+    await chrome.tabs.update(active.tabId, {muted: active.originalTabMuted}).catch(() => undefined);
+  }
+}
 
 async function activeCapture(): Promise<ActiveCapture | undefined> {
   return (await chrome.storage.session.get("activeCapture")).activeCapture;
@@ -35,7 +50,7 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.16.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.17.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
@@ -46,7 +61,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
       await ensureContent(message.tabId);
       await ensureOffscreenDocument();
-      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections", "overlayReadingMode"]);
+      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections", "overlayReadingMode", "muteOriginal", "recognitionQuality"]);
+      settings.muteOriginal = settings.muteOriginal !== false;
+      settings.outputMode = outputMode(settings.outputMode);
       if (!settings.inputMode || settings.inputMode === "auto") {
         const probe = await chrome.tabs.sendMessage(message.tabId, {type: "captions.probe", sourceLanguage: settings.sourceLanguage ?? "auto"});
         settings.inputMode = probe?.ok ? "captions" : "audio";
@@ -60,7 +77,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       });
       stopSpeech();
       await chrome.storage.session.remove("captureError");
-      await chrome.storage.session.set({ activeCapture: { tabId: message.tabId, outputMode: outputMode(settings.outputMode), targetLanguage: settings.targetLanguage ?? "fr", inputMode: settings.inputMode ?? "audio" } });
+      const active: ActiveCapture = { tabId: message.tabId, outputMode: outputMode(settings.outputMode), targetLanguage: settings.targetLanguage ?? "fr", inputMode: settings.inputMode ?? "audio", muteOriginal: settings.muteOriginal };
+      if (active.inputMode === "captions") active.originalTabMuted = (await chrome.tabs.get(message.tabId)).mutedInfo?.muted ?? false;
+      await chrome.storage.session.set({activeCapture: active});
       started = true;
       await chrome.tabs.sendMessage(message.tabId, { type: "overlay.show", text: "Connexion au moteur local gratuit…" });
       const response = await chrome.runtime.sendMessage({ type: "offscreen.start", target: "offscreen", streamId, tabId: message.tabId, settings });
@@ -69,11 +88,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const captions = await chrome.tabs.sendMessage(message.tabId, { type: "captions.start", sourceLanguage: settings.sourceLanguage });
         if (!captions?.ok) throw new Error(captions?.error ?? "Sous-titres accessibles introuvables");
       }
+      await applyOriginalAudio(active);
       await chrome.action.setBadgeText({ text: settings.inputMode === "captions" ? "TXT" : "REC", tabId: message.tabId });
       await chrome.action.setBadgeBackgroundColor({ color: "#c52e40", tabId: message.tabId });
       sendResponse({ ok: true });
     })().catch(async (error) => {
       if (started) {
+        await restoreOriginalAudio(await activeCapture());
         await chrome.tabs.sendMessage(message.tabId, { type: "captions.stop" }).catch(() => undefined);
         await chrome.storage.session.remove("activeCapture");
         stopSpeech();
@@ -112,6 +133,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (active) await chrome.storage.session.set({ activeCapture: { ...active, stopping: true } });
       stopSpeech();
       await chrome.tabs.sendMessage(tabId, { type: "captions.stop" }).catch(() => undefined);
+      await restoreOriginalAudio(active);
       await chrome.runtime.sendMessage({ type: "offscreen.stop", target: "offscreen" });
       await chrome.storage.session.remove("activeCapture");
       await chrome.action.setBadgeText({ text: "", tabId });
@@ -127,11 +149,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       stopSpeech();
       const active = await activeCapture();
       if (active) {
-        await chrome.storage.session.set({ activeCapture: { ...active, outputMode: mode } });
+        const updated = {...active, outputMode: mode};
+        await applyOriginalAudio(updated);
+        await chrome.storage.session.set({ activeCapture: updated });
         await chrome.tabs.sendMessage(active.tabId, { type: "overlay.mode", outputMode: mode }).catch(() => undefined);
       }
       sendResponse({ ok: true });
     })().catch((error) => sendResponse({ ok: false, error: String(error) }));
+    return true;
+  }
+  if (message.type === "audio.change") {
+    (async () => {
+      const muteOriginal = message.muteOriginal === true;
+      const active = await activeCapture();
+      if (active && !active.stopping) {
+        const updated = {...active, muteOriginal};
+        await applyOriginalAudio(updated);
+        await chrome.storage.session.set({activeCapture: updated});
+      }
+      await chrome.storage.local.set({muteOriginal});
+      sendResponse({ok: true});
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
     return true;
   }
   if (message.type === "reading.change") {
@@ -173,6 +211,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       const active = await activeCapture();
       if (!active || active.tabId !== message.tabId) return;
+      await restoreOriginalAudio(active);
       await chrome.tabs.sendMessage(active.tabId, { type: "captions.stop" }).catch(() => undefined);
       await chrome.storage.session.remove("activeCapture");
       await chrome.storage.session.set({ captureError: message.text });

@@ -5,11 +5,12 @@ let listener;
 const messages=[];
 const sockets=[];
 const recorders=[];
+const gains=[];
 const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v6';
+  static engine='polyglot-local-free-v7';
   static rejectCode=false;
   readyState=0;
   sent=[];
@@ -43,7 +44,7 @@ async function configure(t){
  globalThis.chrome={runtime:{onMessage:{addListener:fn=>{listener=fn;}},sendMessage:async message=>{messages.push(message);}}};
  globalThis.WebSocket=LocalSocket;globalThis.MediaRecorder=Recorder;globalThis.FileReader=Reader;
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){},addEventListener(){}}]})}}});
- globalThis.AudioContext=class{createMediaStreamSource(){return{connect(){}};}resume(){return Promise.resolve();}close(){return Promise.resolve();}};
+ globalThis.AudioContext=class{createGain(){const gain={gain:{value:1},connect(){}};gains.push(gain);return gain;}createMediaStreamSource(){return{connect(){}};}resume(){return Promise.resolve();}close(){return Promise.resolve();}};
  await import('../src/offscreen.ts');
 }
 function request(message){return new Promise(resolve=>listener(message,{},resolve));}
@@ -104,4 +105,19 @@ test('ancien moteur demandant un code : instruction de mise à jour et aucune se
  assert.equal(result.ok,false);assert.match(result.error,/ancien moteur.*code/);
  assert.equal(sockets.at(-1).sent.some(message=>message.type==='session.start'),false);
  LocalSocket.rejectCode=false;
+});
+
+
+test('couper la restitution conserve les fichiers audio et le changement prend effet en direct',async t=>{
+ t.mock.method(globalThis,'setTimeout',(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;});
+ t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
+ LocalSocket.engine='polyglot-local-free-v7';LocalSocket.rejectCode=false;
+ const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{outputMode:'both',muteOriginal:true}});
+ assert.equal(result.ok,true);assert.equal(gains.at(-1).gain.value,0);
+ const ws=sockets.at(-1);
+ const [id,timer]=[...timers].find(([,timer])=>timer.delay===3000);timers.delete(id);timer.fn();await flush();
+ const chunk=ws.sent.find(m=>m.type==='audio.chunk');assert.ok(chunk);assert.match(Buffer.from(chunk.data,'base64').toString(),/independent-webm/);
+ await request({type:'offscreen.audio',target:'offscreen',muteOriginal:false});assert.equal(gains.at(-1).gain.value,1);
+ await request({type:'offscreen.audio',target:'offscreen',muteOriginal:true});assert.equal(gains.at(-1).gain.value,0);
+ await request({type:'offscreen.stop',target:'offscreen'});assert.equal(gains.at(-1).gain.value,1);
 });
