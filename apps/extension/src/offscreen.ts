@@ -1,10 +1,11 @@
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v6";
+const FREE_ENGINE_ID = "polyglot-local-free-v7";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;
 let audioContext: AudioContext | null = null;
+let originalGain: GainNode | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let watchdog: ReturnType<typeof setTimeout> | undefined;
 let sequence = 0;
@@ -33,6 +34,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       socket.send(JSON.stringify({type: "session.reading", token, translateDrafts: message.translateDrafts === true}));
       sendResponse({ok: true});
     } else sendResponse({ok: false, error: "Session inactive"});
+    return;
+  }
+  if (message.type === "offscreen.audio") {
+    if (originalGain) originalGain.gain.value = message.muteOriginal === true ? 0 : 1;
+    sendResponse({ok: true});
     return;
   }
   if (message.type === "offscreen.text" || message.type === "offscreen.flush") {
@@ -70,7 +76,11 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
     stream = captured;
     stream.getTracks().forEach((track) => track.addEventListener("ended", () => { if (generation === run) fail("L’onglet ou le flux audio a été fermé."); }));
     audioContext = new AudioContext();
-    audioContext.createMediaStreamSource(stream).connect(audioContext.destination);
+    // Seule la restitution est coupée : MediaRecorder garde le flux original.
+    originalGain = audioContext.createGain();
+    originalGain.gain.value = message.settings.muteOriginal === true && message.settings.outputMode !== "subtitles" ? 0 : 1;
+    audioContext.createMediaStreamSource(stream).connect(originalGain);
+    originalGain.connect(audioContext.destination);
     await audioContext.resume();
   }
   const ws = new WebSocket(LOCAL_WS_URL);
@@ -163,6 +173,7 @@ function finishStop(): Promise<void> {
   if (stopTask) return stopTask;
   if (socket?.readyState !== WebSocket.OPEN || !token) { stop(); return Promise.resolve(); }
   stopping = true;
+  if (originalGain) originalGain.gain.value = 1;
   clearTimeout(timer);
   const run = generation;
   const ws = socket;
@@ -193,7 +204,7 @@ function stop(notify = true) {
   stream?.getTracks().forEach((track) => track.stop());
   if (notify && socket?.readyState === WebSocket.OPEN && token) socket.send(JSON.stringify({ type: "session.stop", token }));
   socket?.close(); audioContext?.close().catch(() => undefined);
-  recorder = null; stream = null; socket = null; audioContext = null;
+  recorder = null; stream = null; socket = null; audioContext = null; originalGain = null;
   token = ""; sequence = 0; pending = 0; activeTabId = null; sending = Promise.resolve(); delivering = Promise.resolve();
   stopping = false; sentAt.clear();
   stopReply?.(); stopReply = undefined; stopTask = undefined;

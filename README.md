@@ -224,3 +224,12 @@ Poignée visible au coin inférieur droit : glisser pour redimensionner avec tai
 Mise à jour obligatoire des deux parties : fermer le moteur, remplacer ses fichiers Python (conserver les environnements et modèles existants), remplacer le dossier extension compilé, recharger l’extension et actualiser la vidéo, puis relancer le moteur. Le protocole v6 refuse un ancien moteur v5 avec une instruction de mise à jour. Aucun modèle supplémentaire n’est requis.
 
 Validation : compilation TypeScript/Vite, tests de l’extension compilée et tests Python incluant le transport WebSocket réel avec moteur simulé. Modèles réels, vitesse et rendu Chrome/Edge Windows restent à vérifier sur la machine utilisateur ; aucune réduction chiffrée de latence n’est annoncée.
+
+
+### Version 1.17 : voix originale et reconnaissance
+
+La case « Couper la voix originale » fonctionne pendant la traduction vocale, en capture audio comme en sous-titres natifs. Le flux transmis au moteur n’est pas coupé. Le son original revient à l’arrêt ; l’état muet initial de l’onglet est conservé pour les sous-titres.
+
+« Précision renforcée » élargit la recherche Whisper à 5 hypothèses de décodage, sans changer les modèles installés ; le calcul peut prendre plus de temps. Le domaine facultatif Sondages guide la reconnaissance et explicite le sens politique de party pour la traduction anglaise, sans modifier la transcription affichée. Ce réglage est spécifique à ce domaine. La justesse de traduction n’est pas garantie.
+
+Voir `docs/MISE_A_JOUR_1_17.txt` pour mettre à jour les deux composants et configurer un cours anglais.

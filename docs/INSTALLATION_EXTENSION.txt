@@ -1,3 +1,5 @@
+MISE À JOUR 1.17 : lire MISE_A_JOUR_1_17.txt. Mettre à jour le moteur ET l’extension.
+
 MISE À JOUR 1.16.0 : moteur ET extension obligatoires (protocole v6).
 Voir MISE_A_JOUR_1_16.txt. Les instructions de versions antérieures ci-dessous
 restent historiques. La dernière session est désormais sauvegardée à l’arrêt.

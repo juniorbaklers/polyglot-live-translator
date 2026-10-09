@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from engine import LocalEngine
+from engine import LocalEngine, translation_input
 from preferences import validate_preferences
 from benchmark import word_error_rate
 
@@ -45,6 +45,23 @@ class PreferencesTests(unittest.TestCase):
         for options in invalid:
             with self.subTest(options=str(options)[:30]), self.assertRaises(ValueError): validate_preferences(options)
         self.assertEqual(validate_preferences({})['domain'], 'general')
+
+    def test_political_meaning_is_explicit_only_in_selected_domain(self):
+        text = 'Which party will win? Political parties are competing.'
+        self.assertEqual(translation_input(text, 'en', 'general'), text)
+        self.assertEqual(translation_input(text, 'fr', 'sondages'), text)
+        self.assertEqual(translation_input(text, 'en', 'sondages'),
+                         'Which political party will win? Political parties are competing.')
+        engine, translator = self.engine()
+        engine.configure_session({'domain': 'sondages'})
+        engine.translate_text('Which party will win?', 'en', 'fr')
+        translator.hypotheses.assert_called_with('Which political party will win?', num_hypotheses=1)
+        self.assertEqual(engine.translate_text('Which party will win?', 'en', 'en'), 'Which party will win?')
+
+    def test_recognition_quality_is_validated(self):
+        self.assertEqual(validate_preferences({'recognitionQuality':'precise'})['recognitionQuality'], 'precise')
+        for value in ('unknown', None, 1):
+            with self.assertRaises(ValueError): validate_preferences({'recognitionQuality':value})
 
     def test_wer_measures_missing_wrong_and_extra_words_without_punctuation(self):
         self.assertEqual(word_error_rate('Hello, WORLD!', 'hello world')['wer'], 0)

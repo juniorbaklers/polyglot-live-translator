@@ -64,7 +64,7 @@ test('réafficher injecte le contenu absent et garde la session avec une fenêtr
  chrome.tabs.get=async()=>({id:7,url:'https://video.example'});
  chrome.tabs.update=async()=>({});
  chrome.scripting={executeScript:async options=>{assert.deepEqual(options.files,['content.js']);injected=true;}};
- chrome.tabs.sendMessage=async(tab,message)=>{calls.push(message);if(message.type==='overlay.ping'){if(!injected)throw new Error('Receiving end does not exist');return{ok:true,version:'1.16.0'};}return{ok:true};};
+ chrome.tabs.sendMessage=async(tab,message)=>{calls.push(message);if(message.type==='overlay.ping'){if(!injected)throw new Error('Receiving end does not exist');return{ok:true,version:'1.17.0'};}return{ok:true};};
  const result=await request({type:'overlay.reveal',tabId:7});
  assert.equal(result.ok,true);assert.equal(injected,true);assert.equal(local.outputMode,'both');assert.equal(state.activeCapture.outputMode,'both');
  assert.equal(calls.at(-1).type,'overlay.reveal');assert.equal(calls.at(-1).active,true);
@@ -93,7 +93,7 @@ test('mode automatique choisit une piste accessible et sinon capture le son',asy
  chrome.tabs.get=async()=>({url:'https://video.example'});
  chrome.tabs.sendMessage=async(_,message)=>{
   calls.push(message);
-  if(message.type==='overlay.ping')return{ok:true,version:'1.16.0'};
+  if(message.type==='overlay.ping')return{ok:true,version:'1.17.0'};
   if(message.type==='captions.probe')return{ok:hasCaptions};
   return{ok:true};
  };
@@ -112,4 +112,34 @@ test('mode automatique choisit une piste accessible et sinon capture le son',asy
  assert.equal(calls.find(m=>m.type==='offscreen.start').settings.translateDrafts,true);
  assert.equal(calls.some(m=>m.type==='captions.start'),false);
  await request({type:'capture.stop'});
+});
+
+
+test('voix traduite sur sous-titres : couper, réactiver, restaurer le son après arrêt ou erreur',async()=>{
+ const local={};const updates=[];
+ chrome.storage.local={set:async values=>Object.assign(local,values)};
+ chrome.tabs.update=async(tab,options)=>{updates.push(options.muted);return{};};
+ chrome.runtime.sendMessage=async()=>({ok:true});
+ chrome.tabs.sendMessage=async()=>({ok:true});
+ state.activeCapture={tabId:7,inputMode:'captions',outputMode:'both',targetLanguage:'fr',originalTabMuted:false};
+ assert.equal((await request({type:'audio.change',muteOriginal:true})).ok,true);assert.equal(updates.at(-1),true);
+ await request({type:'output.change',outputMode:'subtitles'});assert.equal(updates.at(-1),false);
+ await request({type:'output.change',outputMode:'voice'});assert.equal(updates.at(-1),true);
+ await request({type:'capture.stop'});assert.equal(updates.at(-1),false);
+ state.activeCapture={tabId:7,inputMode:'captions',outputMode:'voice',originalTabMuted:true};
+ await request({type:'audio.change',muteOriginal:false});assert.equal(updates.at(-1),true);
+ await request({type:'capture.stop'});assert.equal(updates.at(-1),true);
+ state.activeCapture={tabId:7,inputMode:'captions',outputMode:'voice',originalTabMuted:false};
+ listener({type:'capture.failed',tabId:7,text:'Test'}, {},()=>{});await flush();
+ assert.equal(updates.at(-1),false);assert.equal(state.activeCapture,undefined);
+});
+
+test('en capture audio, la coupure passe par le gain hors écran sans couper le flux source',async()=>{
+ const sent=[];
+ state.activeCapture={tabId:7,inputMode:'audio',outputMode:'both',targetLanguage:'fr'};
+ chrome.runtime.sendMessage=async message=>{sent.push(message);return{ok:true};};
+ await request({type:'audio.change',muteOriginal:true});
+ assert.deepEqual(sent.at(-1),{type:'offscreen.audio',target:'offscreen',muteOriginal:true});
+ await request({type:'output.change',outputMode:'subtitles'});assert.equal(sent.at(-1).muteOriginal,false);
+ delete state.activeCapture;
 });
