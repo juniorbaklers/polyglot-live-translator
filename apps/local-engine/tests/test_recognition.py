@@ -6,10 +6,60 @@ from unittest.mock import Mock
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from engine import LocalEngine
+from engine import LocalEngine, stable_passage_boundary
 
 
 class RecognitionTests(unittest.TestCase):
+    def test_clause_boundary_requires_repeated_punctuation_and_complete_context(self):
+        prefix = 'This software processes geographic data efficiently,'
+        self.assertTrue(stable_passage_boundary(prefix, prefix + ' and exports maps', 'and exports maps', 'en'))
+        for previous, following, language in [
+            (prefix.replace(',', ''), 'and exports maps', 'en'),
+            (prefix, 'and', 'en'), (prefix, 'and exports maps', 'zh')]:
+            self.assertFalse(stable_passage_boundary(prefix, previous, following, language))
+        for fragment in ['If you have experience in geographic data,',
+                         'Une fois que vous avez obtenu la certification,',
+                         'This software can work with the,',
+                         'The listed measurements are 100 200 300,']:
+            self.assertFalse(stable_passage_boundary(fragment, fragment + ' next words here', 'next words here', 'en'))
+
+    def test_short_stable_passage_keeps_tail_audio_and_final_text_unchanged(self):
+        def words(text, low=False):
+            return [SimpleNamespace(word=(' ' if i else '') + token,
+                                    end=(i + 1) * .25,
+                                    probability=.3 if low and i == 3 else .95)
+                    for i, token in enumerate(text.split())]
+        prefix = 'This software processes geographic data efficiently,'
+        initial = prefix + ' and exports maps'
+        initial_words = words(initial)
+        initial_words[-1].end = 2.95
+        first = self.feed(initial, 2.95, words=initial_words)[0]
+        current = initial + ' for our customers'
+        current_words = words(current)
+        current_words[-1].end = 5.95
+        events = self.feed(current, 5.95, words=current_words)
+        self.assertEqual(events[0]['id'], first['id'])
+        self.assertEqual(events[0]['original'], prefix)
+        self.assertTrue(events[0]['final'])
+        self.assertFalse(events[0]['bounded'])
+        self.assertEqual(events[1]['original'], 'and exports maps for our customers')
+        self.assertEqual((events[0]['start'], events[0]['end']), (0, 1.5))
+        self.assertEqual(len(self.engine.window), int((6 - 1.5) * 16000))
+        frozen = dict(events[0])
+        tail = self.feed('and exports maps for our customers worldwide', 6.95)[0]
+        self.assertNotEqual(tail['id'], frozen['id'])
+        self.assertEqual(events[0], frozen)
+
+    def test_uncertain_clause_waits_instead_of_becoming_final(self):
+        text = 'This software processes geographic data efficiently, and exports maps'
+        words = [SimpleNamespace(word=(' ' if i else '') + token, end=(i + 1) * .25,
+                                 probability=.3 if i == 3 else .95)
+                 for i, token in enumerate(text.split())]
+        self.feed(text, 2.95, words=words)
+        events = self.feed(text + ' for customers', 5.95, words=words + [SimpleNamespace(word=' for customers', end=5.95)])
+        self.assertEqual(len(events), 1)
+        self.assertFalse(events[0]['final'])
+
     def setUp(self):
         self.engine = LocalEngine.__new__(LocalEngine)
         self.engine.audio_decoder = lambda *args, **kwargs: np.ones(48000, dtype=np.float32)

@@ -23,6 +23,34 @@ def recognition_tokens(text):
     return re.findall(r"[\u3400-\u9fff]|[^\W_\u3400-\u9fff]+", text.casefold())
 
 
+def stable_passage_boundary(prefix, previous, following, language):
+    """Frontière courte et prudente, pas un analyseur sémantique.
+
+    Une virgule/point-virgule doit se répéter dans deux reconnaissances,
+    avec assez de mots avant et après. Les introductions subordonnées et
+    les énumérations numériques restent dans la fenêtre de reconnaissance.
+    """
+    if language not in {'en', 'fr', 'es'}:
+        return False
+    tokens = recognition_tokens(prefix)
+    if not 6 <= len(tokens) <= 24 or len(recognition_tokens(following)) < 3:
+        return False
+    if not re.search(r'[,;](?:["”»])?$', prefix):
+        return False
+    normalized_prefix = ' '.join(prefix.casefold().split())
+    normalized_previous = ' '.join(previous.casefold().split())
+    if not normalized_previous.startswith(normalized_prefix):
+        return False
+    # Ne pas détacher « si/quand/bien que… » de sa proposition principale.
+    dependent = r'^(?:if|when|once|although|unless|because|while|after|before|as soon as|si|quand|lorsque|une fois|bien que|parce que|pour que|avant|après|cuando|aunque|porque|mientras|después|antes)\b'
+    if re.match(dependent, normalized_prefix):
+        return False
+    dangling = {'and', 'or', 'but', 'the', 'a', 'an', 'to', 'of', 'with',
+                'et', 'ou', 'mais', 'le', 'la', 'les', 'un', 'une', 'de', 'du', 'des', 'à', 'avec',
+                'y', 'o', 'pero', 'el', 'los', 'las', 'una', 'del', 'con', 'para'}
+    return tokens[-1] not in dangling and not tokens[-1].isdigit()
+
+
 class LocalSentenceSplitter:
     """Découpe les courts extraits audio sans modèle ni accès réseau.
 
@@ -251,17 +279,25 @@ class LocalEngine:
             self.window = None
             self.window_start = self.window_end
             return [event]
-        # Une phrase ponctuée et stable dans deux reconnaissances successives peut
-        # être finalisée sans attendre que le locuteur fasse une pause.
+        # Publier le premier passage stable, sans attendre une longue phrase.
+        # Les frontières intermédiaires restent prudentes et répétées ; aucune
+        # coupure arbitraire toutes les N secondes ni garantie de sens parfait.
         normalized_previous = recognition_tokens(self.last_text)
         cut = None
         for index, word in enumerate(words):
-            if not re.search(r'[.!?。！？](?:["”»])?$', word.word.strip()):
+            if not re.search(r'[.!?。！？,;](?:["”»])?$', word.word.strip()):
                 continue
             prefix = "".join(item.word for item in words[:index + 1]).strip()
             tokens = recognition_tokens(prefix)
+            sentence_end = bool(re.search(r'[.!?。！？](?:["”»])?$', prefix))
+            following = "".join(item.word for item in words[index + 1:]).strip()
+            if not sentence_end and not stable_passage_boundary(prefix, self.last_text, following, detected):
+                continue
+            if not sentence_end and any(getattr(item, 'probability', 1) < .65 for item in words[:index + 1]):
+                continue
             if tokens and normalized_previous[:len(tokens)] == tokens and word.end <= self.last_duration - 0.25:
                 cut = (index, prefix, word.end)
+                break
         events = []
         if cut is not None:
             index, prefix, end = cut
