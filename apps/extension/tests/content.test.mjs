@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.19.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.20.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -310,4 +310,12 @@ test('sauvegarder les textes relus à l’arrêt et rouvrir la dernière session
  assert.equal(saved().transcriptArchive.documentTranslation,'Correction conservée');
  assert.equal(saved().transcriptArchive.rows[0].start,1);
  dom.window.close();
+});
+
+test('voix seule : masquer la fenêtre mais conserver les traductions dans l’historique',async()=>{
+ const {dom,receive,root}=setup();await tick();
+ receive({type:'overlay.hide',id:'voice-only',revision:1,final:true,original:'Hello',translation:'Bonjour'});
+ assert.equal(root.querySelector('.translation').textContent,'Bonjour');
+ receive({type:'overlay.reveal'});await tick();
+ assert.equal(root.querySelector('.translation').textContent,'Bonjour');dom.window.close();
 });

@@ -39,3 +39,33 @@ test('chinois simplifié : choix source/cible, restauration et persistance',asyn
  assert.equal(local.sourceLanguage,'en');assert.equal(local.targetLanguage,'zh');
  dom.window.close();
 });
+
+test('glossaire extensible : ajout allemand vers portugais et persistance des experts',async()=>{
+ const {dom,document,local}=await setup();
+ document.querySelector('#term-source').value='de';document.querySelector('#term-target').value='pt-br';
+ document.querySelector('#term-original').value='Neuron';document.querySelector('#term-translation').value='neurônio';
+ document.querySelector('#add-term').click();
+ document.querySelector('#translation-engine').value='ollama';document.querySelector('#expert').value='technical';
+ document.querySelector('#voice-engine').value='auto';document.querySelector('#voice-rate').value='1.15';
+ document.querySelector('#save-preferences').click();await tick();
+ assert.equal(local.terminology.entries[0].target,'pt-br');assert.equal(local.terminology.entries[0].translation,'neurônio');
+ assert.equal(local.expert,'technical');assert.equal(local.voiceRate,1.15);assert.equal(local.translationEngine,'ollama');
+ dom.window.close();
+});
+
+test('les termes IA couvrent douze directions sans écraser les termes personnels',async()=>{
+ const {dom,document,local}=await setup({terminology:{version:1,entries:[{source:'en',target:'fr',term:'deep learning',translation:'Mon terme',domain:'*'}]}});
+ document.querySelector('#builtin-terms').click();document.querySelector('#builtin-terms').click();
+ document.querySelector('#save-preferences').click();await tick();
+ assert.equal(local.terminology.entries.length,72);
+ assert.equal(local.terminology.entries.find(t=>t.source==='en'&&t.target==='fr'&&t.term==='deep learning').translation,'Mon terme');
+ assert.equal(new Set(local.terminology.entries.map(t=>`${t.source}-${t.target}`)).size,12);
+ dom.window.close();
+});
+
+test('glossaire malformé bloque le démarrage sans perdre les réglages existants',async()=>{
+ const {dom,document,sent}=await setup();
+ document.querySelector('#terminology').value='{invalid';document.querySelector('#capture').click();await tick();
+ assert.equal(sent.some(m=>m.type==='capture.start'),false);assert.ok(document.querySelector('#state').classList.contains('error'));
+ dom.window.close();
+});

@@ -8,8 +8,9 @@ function reset() {
   globalThis.chrome = {
     tabs: { sendMessage: async (tab, message) => { messages.push({ tab, ...message }); } },
     runtime: {},
-    tts: { stop: () => {}, getVoices: callback => callback([{voiceName:'Français local',lang:'fr',remote:false},{voiceName:'Espagnol local',lang:'es',remote:false}]), speak: (text, options, callback) => { spoken.push({ text, options }); callback(); } }
+    tts: { stop: () => {}, getVoices: callback => callback([{voiceName:'Français local',lang:'fr',remote:false},{voiceName:'Espagnol local',lang:'es',remote:false}]), speak: (text, options, callback) => { spoken.push({ text, options }); callback(); options.onEvent({type:"end"}); } }
   };
+  stopSpeech();
 }
 
 test('les anciens réglages et les valeurs inconnues restent en sous-titres', () => {
@@ -90,5 +91,43 @@ test('ne pas commencer une voix en attente après un arrêt', () => {
   chrome.tts.getVoices = callback => { reply = callback; };
   deliverTranslation(7, 'voice', 'fr', 'Hello', 'Bonjour');
   stopSpeech(); reply([{voiceName:'Français local',lang:'fr',remote:false}]);
+  assert.equal(spoken.length,0);
+});
+
+test('file de voix bornée, lecture successive et arrêt de toutes les phrases', () => {
+  reset(); const events=[];
+  chrome.tts.speak=(text,options,callback)=>{spoken.push({text,options});events.push(options.onEvent);callback();};
+  for(let i=0;i<8;i++) deliverTranslation(7,'both','fr','source',`phrase ${i}`,{id:`q-${i}`,final:true});
+  assert.equal(spoken.length,1);
+  assert.ok(messages.some(m=>/retard/.test(m.text??'')));
+  events[0]({type:'end'});assert.equal(spoken.length,2);
+  stopSpeech();events[1]({type:'end'});assert.equal(spoken.length,2);
+});
+
+test('une phrase finalisée déjà lue ne lance pas une deuxième voix', () => {
+  reset();
+  deliverTranslation(7,'both','fr','source','Bonjour',{id:'duplicate',final:true});
+  deliverTranslation(7,'both','fr','source','Bonjour',{id:'duplicate',final:true});
+  assert.equal(spoken.length,1);
+});
+
+test('Piper absent : repli système une fois puis aucun nouvel appel Piper', async () => {
+  reset();let attempts=0;
+  chrome.runtime.sendMessage=async()=>{attempts++;return{ok:false,error:'Voix non installée'};};
+  deliverTranslation(7,'both','fr','Hello','Bonjour',undefined,true,{engine:'auto',rate:1.15});
+  await Promise.resolve(); await Promise.resolve();
+  assert.equal(spoken[0].options.rate,1.15);
+  assert.ok(messages.some(m=>/Piper indisponible/.test(m.text??'')));
+  deliverTranslation(7,'both','fr','Bye','Au revoir',undefined,true,{engine:'auto'});
+  assert.equal(attempts,1);assert.equal(spoken.length,2);
+  stopSpeech();
+});
+
+test('un retour Piper arrivé après l’arrêt ne commence pas la voix système', async () => {
+  reset();let reply;
+  chrome.runtime.sendMessage=()=>new Promise(resolve=>{reply=resolve;});
+  deliverTranslation(7,'voice','fr','Hello','Bonjour',undefined,true,{engine:'piper'});
+  const pending=reply;stopSpeech();pending({ok:false,error:'Trop lent'});
+  await Promise.resolve();await Promise.resolve();
   assert.equal(spoken.length,0);
 });

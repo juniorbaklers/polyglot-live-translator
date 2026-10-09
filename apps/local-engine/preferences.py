@@ -1,6 +1,8 @@
 """Préférences locales bornées : vocabulaire indicatif et corrections exactes."""
 import re
 from languages import LANGUAGES
+from terminology import validate_terms
+from ai_experts import EXPERTS
 
 DOMAINS = {
     "general": "",
@@ -53,7 +55,23 @@ def validate_preferences(options):
         if source not in LANGUAGES or target not in LANGUAGES:
             raise ValueError("Langue de correction invalide")
         clean.append(dict(zip(("original", "translation", "source", "target"), values)))
-    return {"domain": domain, "glossary": glossary.strip(), "corrections": clean, "recognitionQuality": quality}
+    terms = validate_terms(options.get("terminology", {"version": 1, "entries": []}))
+    backend = options.get("translationEngine", "classic")
+    expert = options.get("expert", "general")
+    model = options.get("aiModel", "")
+    prompt = options.get("expertPrompt", "")
+    voice = options.get("voiceEngine", "system")
+    rate = options.get("voiceRate", 1)
+    if backend not in ("classic", "ollama") or expert not in EXPERTS:
+        raise ValueError("Moteur de traduction ou expert invalide")
+    if not isinstance(model, str) or len(model) > 150 or (model and not re.fullmatch(r"[a-zA-Z0-9_.:/-]+", model)) or model.endswith((":cloud", "-cloud")):
+        raise ValueError("Choisissez un modèle Ollama local")
+    if not isinstance(prompt, str) or len(prompt) > 3000:
+        raise ValueError("Prompt limité à 3000 caractères")
+    if voice not in ("system", "auto", "piper") or isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0.8 <= rate <= 1.4:
+        raise ValueError("Réglage vocal invalide")
+    return {"terminology": terms, "translationEngine": backend, "expert": expert, "aiModel": model,
+            "expertPrompt": prompt.strip(), "voiceEngine": voice, "voiceRate": rate, "domain": domain, "glossary": glossary.strip(), "corrections": clean, "recognitionQuality": quality}
 
 
 def normalized(text):

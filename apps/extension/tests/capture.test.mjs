@@ -10,7 +10,7 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v9';
+  static engine='polyglot-local-free-v10';
   static rejectCode=false;
   readyState=0;
   sent=[];
@@ -111,7 +111,7 @@ test('ancien moteur demandant un code : instruction de mise à jour et aucune se
 test('couper la restitution conserve les fichiers audio et le changement prend effet en direct',async t=>{
  t.mock.method(globalThis,'setTimeout',(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;});
  t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
- LocalSocket.engine='polyglot-local-free-v9';LocalSocket.rejectCode=false;
+ LocalSocket.engine='polyglot-local-free-v10';LocalSocket.rejectCode=false;
  const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{outputMode:'both',muteOriginal:true}});
  assert.equal(result.ok,true);assert.equal(gains.at(-1).gain.value,0);
  const ws=sockets.at(-1);
@@ -120,4 +120,24 @@ test('couper la restitution conserve les fichiers audio et le changement prend e
  await request({type:'offscreen.audio',target:'offscreen',muteOriginal:false});assert.equal(gains.at(-1).gain.value,1);
  await request({type:'offscreen.audio',target:'offscreen',muteOriginal:true});assert.equal(gains.at(-1).gain.value,0);
  await request({type:'offscreen.stop',target:'offscreen'});assert.equal(gains.at(-1).gain.value,1);
+});
+
+test('voix Piper hors du flux capturé : lecture, arrêt et réponse tardive',async t=>{
+ t.mock.method(globalThis,'setTimeout',(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;});
+ t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
+ const audios=[];
+ globalThis.Audio=class extends EventTarget{constructor(url){super();this.url=url;audios.push(this);}play(){return Promise.resolve();}pause(){this.paused=true;}};
+ LocalSocket.engine='polyglot-local-free-v10';
+ await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{outputMode:'both',muteOriginal:true}});
+ const ws=sockets.at(-1), recorderCount=recorders.length;
+ const result=request({type:'offscreen.voice',target:'offscreen',text:'Bonjour',language:'fr',rate:1.15});await flush();
+ const sent=ws.sent.at(-1);assert.equal(sent.type,'voice.synthesize');assert.equal(sent.token,'local-token');
+ ws.reply({type:'voice.result',id:sent.id,audio:Buffer.from('test wav').toString('base64')});await flush();
+ assert.equal(audios.length,1);assert.equal(audios[0].playbackRate,1.15);assert.equal(recorders.length,recorderCount);
+ audios[0].dispatchEvent(new Event('ended'));assert.equal((await result).ok,true);
+ const cancelled=request({type:'offscreen.voice',target:'offscreen',text:'Suite',language:'fr',rate:1});await flush();
+ const cancelledId=ws.sent.at(-1).id;
+ await request({type:'offscreen.voice.stop',target:'offscreen'});assert.equal((await cancelled).ok,false);
+ ws.reply({type:'voice.result',id:cancelledId,audio:Buffer.from('late').toString('base64')});await flush();assert.equal(audios.length,1);
+ await request({type:'offscreen.stop',target:'offscreen'});assert.equal(timers.size,0);
 });

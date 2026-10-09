@@ -1,0 +1,94 @@
+POLYGLOT 1.20 — EXPERTS IA, GLOSSAIRE MULTILINGUE ET VOIX PIPER
+
+MISE À JOUR SANS PERDRE VOS MODÈLES
+1. Arrêtez la traduction et le moteur local actuel.
+2. Décompressez la nouvelle archive GitHub.
+3. Copiez le contenu de apps/extension/dist dans le dossier de votre extension
+   installée, en remplaçant les anciens fichiers.
+4. Copiez les fichiers de apps/local-engine dans votre dossier de moteur actuel,
+   en remplaçant les anciens fichiers. Gardez .venv, .venv-leger, models et votre
+   VOCABULAIRE.txt personnel. Ne désinstallez pas le moteur pour cette mise à jour.
+5. Dans chrome://extensions ou edge://extensions, rechargez l'extension.
+   Relancez DEMARRER.cmd (ou votre lanceur habituel) et actualisez la page vidéo.
+Les deux parties utilisent maintenant le protocole local v10.
+
+GLOSSAIRE — DISPONIBLE SANS OLLAMA NI PIPER
+Ouvrez Réglages avancés. Dans Glossaire multilingue, indiquez le code de langue
+source, le code cible, le terme original et sa traduction préférée. Cliquez sur
+Ajouter / modifier ce terme, puis Enregistrer les réglages. Vous pouvez limiter
+un terme au sujet sélectionné. Relancez la traduction pour appliquer.
+Exemple : en → fr, deep learning → apprentissage profond.
+Le bouton des termes IA ajoute 72 entrées : 6 concepts dans les 12 directions
+entre anglais, français, espagnol et chinois. Vos termes personnels sont conservés.
+Importer / Exporter JSON permet de garder ou partager votre glossaire.
+Pour supprimer une entrée, ouvrez Éditer le glossaire complet et retirez son objet,
+puis enregistrez. Limite : 500 entrées, 200 caractères par terme et traduction.
+
+Les codes de langue ne dépendent pas de la liste des langues actives : de, it,
+pt-br, ar, ja, etc. sont acceptés dès maintenant pour préparer les ajouts futurs.
+Cela n'installe pas les modèles correspondants. Les langues de traduction actives
+restent en, fr, es, zh et dépendent des modèles installés.
+Format versionné :
+{"version":1,"entries":[{"source":"en","target":"fr","term":"deep learning","translation":"apprentissage profond","domain":"*"}]}
+Chaque direction est explicite : une entrée en → fr ne crée pas automatiquement
+son inverse. domain facultatif vaut * (tous les sujets). Le domaine spécifique
+prime sur une entrée générale. Les corrections exactes de phrases restent prioritaires.
+Les termes les plus longs ont priorité, sans remplacer des sous-chaînes de mots.
+Avec le moteur classique, des marqueurs préservent les termes. S'ils sont modifiés
+par le modèle, les fragments autour des termes sont traduits séparément. Ce repli
+peut rendre la phrase moins naturelle mais conserve les traductions imposées.
+
+EXPERTS IA — INSTALLATION FACULTATIVE
+Les cinq stratégies sont Général, Technique, Cours, Oral et Personnalisé. Elles
+utilisent le sujet, les termes correspondant aux langues et deux passages précédents.
+Leur code est original, inspiré du principe décrit par Immersive Translate ; ce
+n'est pas un import automatique de son catalogue YAML ni de ses services payants.
+1. Installez Ollama depuis https://ollama.com/download .
+2. Installez volontairement un modèle de dialogue local. Exemple raisonnablement
+   compact, environ 1,4 Go de fichier : dans un terminal, ollama pull qwen3:1.7b
+   Source du modèle : https://ollama.com/library/qwen3:1.7b
+   La RAM nécessaire à l'exécution est supérieure à la taille du téléchargement.
+3. Lancez Ollama. Pour précharger le modèle : ollama run qwen3:1.7b ""
+4. Choisissez Expert IA — Ollama local dans le popup et l'expert souhaité.
+   Modèle vide : sélection prudente parmi les modèles déjà installés selon la RAM
+   disponible. Vous pouvez renseigner qwen3:1.7b pour le choisir explicitement.
+5. Enregistrez et relancez la traduction.
+Seuls les passages finalisés passent par l'IA. Les fragments restent sur Argos.
+Le moteur contacte uniquement 127.0.0.1:11434 ; aucune clé API ni service payant.
+Il vérifie /api/show pour refuser les modèles cloud, y compris les alias. Un
+modèle absent, une erreur, un délai de 8 secondes ou un glossaire non respecté
+provoque un repli sur Argos pour la session, avec un message. Pour réessayer,
+préchargez le modèle puis redémarrez la traduction. Aucun téléchargement automatique.
+Pour désactiver les fonctions cloud d'Ollama lui-même : OLLAMA_NO_CLOUD=1 puis
+redémarrage d'Ollama. Documentation : https://docs.ollama.com/faq
+Ollama gère son accélération CPU/GPU selon le matériel compatible. La transcription
+Whisper conserve ses profils CPU/RAM automatiques ; cette version ne force pas CUDA.
+
+VOIX PIPER — INSTALLATION FACULTATIVE
+1. Dans votre dossier de moteur, lancez INSTALLER_VOIX.cmd.
+2. Choisissez le moteur normal (1) ou léger (2), selon votre lanceur habituel.
+3. Indiquez la langue cible : fr, en, es, zh ou une autre langue.
+4. Appuyez sur Entrée pour accepter la voix suggérée, ou fournissez un identifiant
+   du catalogue Piper. Internet est nécessaire uniquement pour l'installation.
+5. Redémarrez le moteur. Dans le popup, choisissez Piper si installé, sinon voix
+   du système, enregistrez et relancez la traduction.
+La voix est stockée dans models/voices/fr.onnx et fr.onnx.json (ou le code choisi).
+Une seule voix est gardée en mémoire. Piper fonctionne sur CPU. La voix WAV est
+jouée par le document invisible de l'extension, hors du flux de l'onglet capturé.
+Une voix absente ou un échec provoque un repli sur la voix locale du système.
+Les deux moteurs refusent les voix distantes. La vitesse est réglable de 0,8 à 1,4.
+Catalogue et licences de chaque voix : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md
+
+ÉVITER LES DEUX VOIX
+Choisissez Fenêtre + voix traduite ou Voix traduite seule et cochez Couper la voix
+originale. Le son original revient à l'arrêt. Seuls les passages finalisés sont
+lus, sans répétition du même identifiant. La file est bornée à cinq phrases en
+attente : si elle déborde, les nouvelles phrases restent dans l'historique et
+une alerte invite à mettre la vidéo en pause. La traduction conserve un délai.
+Il ne s'agit pas d'un doublage à synchronisation labiale comme un film préparé.
+
+VALIDATION
+Tests automatiques de validation, routage, erreurs, arrêt et compatibilité.
+Un WAV réel a été généré avec Piper fr_FR-siwis-medium sur CPU. Aucun benchmark
+réel d'un modèle Ollama ni essai complet Chrome/Windows n'a encore été réalisé.
+La qualité dépend toujours du son original, des modèles et des langues choisies.

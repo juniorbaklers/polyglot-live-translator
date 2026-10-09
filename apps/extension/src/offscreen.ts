@@ -1,6 +1,6 @@
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v9";
+const FREE_ENGINE_ID = "polyglot-local-free-v10";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;
@@ -20,9 +20,49 @@ let inputMode = "audio";
 const sentAt = new Map<number, number>();
 let stopReply: (() => void) | undefined;
 let stopTask: Promise<void> | undefined;
+let voiceSequence = 0;
+let voiceAudio: HTMLAudioElement | null = null;
+let voiceUrl: string | null = null;
+const voiceReplies = new Map<number, {reply: (value: {ok: boolean; error?: string}) => void; timer: ReturnType<typeof setTimeout>; rate: number}>();
+function stopVoice() {
+  voiceAudio?.pause(); voiceAudio = null;
+  if (voiceUrl) URL.revokeObjectURL(voiceUrl); voiceUrl = null;
+  for (const pendingVoice of voiceReplies.values()) { clearTimeout(pendingVoice.timer); pendingVoice.reply({ok: false, error: "Lecture annulée"}); }
+  voiceReplies.clear();
+}
+function receiveVoice(response: {id: number; audio?: string; error?: string}) {
+  const request = voiceReplies.get(response.id); if (!request) return;
+  const finish = (error?: string) => {
+    if (!voiceReplies.delete(response.id)) return;
+    clearTimeout(request.timer);
+    voiceAudio?.pause(); voiceAudio = null;
+    if (voiceUrl) URL.revokeObjectURL(voiceUrl); voiceUrl = null;
+    request.reply({ok: !error, error});
+  };
+  if (response.error || !response.audio) { finish(response.error ?? "Audio absent"); return; }
+  try {
+    const bytes = Uint8Array.from(atob(response.audio), char => char.charCodeAt(0));
+    voiceUrl = URL.createObjectURL(new Blob([bytes], {type: "audio/wav"}));
+    const audio = new Audio(voiceUrl); voiceAudio = audio;
+    audio.playbackRate = request.rate;
+    audio.addEventListener("ended", () => finish(), {once: true});
+    audio.addEventListener("error", () => finish("Lecture audio impossible"), {once: true});
+    audio.play().catch(() => finish("Lecture audio refusée"));
+  } catch { finish("Audio local invalide"); }
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.target !== "offscreen") return;
+  if (message.type === "offscreen.voice.stop") { stopVoice(); sendResponse({ok: true}); return; }
+  if (message.type === "offscreen.voice") {
+    if (stopping || !token || socket?.readyState !== WebSocket.OPEN) { sendResponse({ok: false, error: "Session vocale inactive"}); return; }
+    if (voiceReplies.size) { sendResponse({ok: false, error: "Lecture déjà active"}); return; }
+    const id = voiceSequence++;
+    const timer = setTimeout(() => { stopVoice(); }, 90000);
+    voiceReplies.set(id, {reply: sendResponse, timer, rate: Math.max(0.8, Math.min(1.4, Number(message.rate) || 1))});
+    socket.send(JSON.stringify({type: "voice.synthesize", token, id, text: message.text, language: message.language}));
+    return true;
+  }
   if (message.type === "offscreen.start") {
     start(message).then(() => sendResponse({ ok: true })).catch((error) => {
       fail(String(error)); sendResponse({ ok: false, error: String(error) });
@@ -101,6 +141,8 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
       if (generation !== run) return;
       try {
         const response = JSON.parse(String(event.data));
+        if (response.type === "voice.result") { receiveVoice(response); return; }
+        if (response.type === "notice") { report(response.message); return; }
         if (response.type === "pair.accepted") {
           if (response.engine !== FREE_ENGINE_ID) { rejectConnection("Le moteur et l’extension ne sont pas compatibles. Mettez à jour leurs fichiers ensemble, puis relancez le moteur."); return; }
           token = response.token;
@@ -173,6 +215,7 @@ function finishStop(): Promise<void> {
   if (stopTask) return stopTask;
   if (socket?.readyState !== WebSocket.OPEN || !token) { stop(); return Promise.resolve(); }
   stopping = true;
+  stopVoice();
   if (originalGain) originalGain.gain.value = 1;
   clearTimeout(timer);
   const run = generation;
@@ -199,6 +242,7 @@ function finishStop(): Promise<void> {
 
 function stop(notify = true) {
   generation++;
+  stopVoice();
   clearTimeout(timer); clearTimeout(watchdog);
   if (recorder && recorder.state !== "inactive") recorder.stop();
   stream?.getTracks().forEach((track) => track.stop());

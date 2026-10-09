@@ -197,6 +197,37 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await self.receive(socket))['type'], 'error')
 
 
+    async def test_voice_error_preserves_session_and_expert_preferences(self):
+        from unittest.mock import Mock
+        self.service.voice=Mock()
+        self.service.voice.synthesize.side_effect=ValueError("Voix non installée")
+        async with connect(self.url,origin="chrome-extension://"+"a"*32) as socket:
+            token=await self.pair(socket)
+            terms={"version":1,"entries":[{"source":"de","target":"it","term":"Neuron","translation":"neurone"}]}
+            await self.send(socket,{"type":"session.start","token":token,"options":{"sourceLanguage":"en","targetLanguage":"fr","inputMode":"captions","terminology":terms,"translationEngine":"ollama","expert":"technical"}})
+            self.assertEqual((await self.receive(socket))["state"],"capturing")
+            self.assertEqual(self.engine.preferences["terminology"]["entries"][0]["target"],"it")
+            self.assertEqual(self.engine.preferences["expert"],"technical")
+            await self.send(socket,{"type":"voice.synthesize","token":token,"id":4,"language":"fr","text":"Bonjour"})
+            reply=await self.receive(socket)
+            self.assertEqual(reply["id"],4);self.assertIn("Voix non installée",reply["error"])
+            await self.send(socket,{"type":"text.chunk","token":token,"text":"Still working.","language":"en","start":0,"end":2})
+            response=await self.receive(socket)
+            while response["type"]!="audio.ack":response=await self.receive(socket)
+            self.assertTrue(self.engine.calls)
+
+    async def test_voice_requires_pairing_and_active_session(self):
+        from unittest.mock import Mock
+        self.service.voice=Mock()
+        async with connect(self.url,origin="chrome-extension://"+"a"*32) as socket:
+            await self.send(socket,{"type":"voice.synthesize","id":1,"language":"fr","text":"Secret"})
+            self.assertEqual((await self.receive(socket))["type"],"error")
+            token=await self.pair(socket)
+            await self.send(socket,{"type":"voice.synthesize","token":token,"id":1,"language":"fr","text":"Secret"})
+            self.assertEqual((await self.receive(socket))["type"],"error")
+            self.service.voice.synthesize.assert_not_called()
+
+
 class OfflineTests(unittest.TestCase):
     def test_outbound_network_is_blocked_but_localhost_works(self):
         code = """

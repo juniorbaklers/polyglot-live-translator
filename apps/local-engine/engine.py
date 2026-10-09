@@ -7,6 +7,8 @@ from collections import OrderedDict
 from contextual_translation import contextual_translation
 from languages import LANGUAGES, BASE_PAIRS
 from preferences import DOMAINS, normalized, validate_preferences
+from terminology import matching_terms, translate_with_terms
+from ai_experts import LocalExpert
 from pathlib import Path
 from resources import detect_resources, choose_profile, load_model
 
@@ -123,6 +125,9 @@ class LocalEngine:
         self.translate_drafts = options.get("translateDrafts", True)
         self.recognition_quality = preferences["recognitionQuality"]
         self.session_domain = preferences["domain"]
+        self.terminology = preferences["terminology"]["entries"]
+        self.expert = LocalExpert(preferences) if preferences["translationEngine"] == "ollama" else None
+        self.notices = []
         self.reset_translation_context()
         self.translation_cache = OrderedDict()
 
@@ -164,6 +169,27 @@ class LocalEngine:
             return text
         model_text = translation_input(text, language, getattr(self, "session_domain", "general"))
         translator = self.languages[language].get_translation(self.languages[target])
+        matches = matching_terms(getattr(self, "terminology", []), model_text, language, target, getattr(self, "session_domain", "general"))
+        key = (text.strip(), language, target, final)
+        if key in self.translation_cache:
+            self.translation_cache.move_to_end(key)
+            return self.translation_cache[key]
+        def plain(value):
+            hypotheses = translator.hypotheses(value, num_hypotheses=1)
+            return hypotheses[0].value.strip() if hypotheses else ""
+        expert = getattr(self, "expert", None)
+        if final and expert:
+            value = expert.translate(model_text, language, target, self.session_domain, matches, self.translation_history)
+            if expert.warning:
+                self.notices.append(expert.warning)
+                expert.warning = None
+            if value:
+                self.cache_translation(key, value)
+                return value
+        if matches:
+            value = translate_with_terms(model_text, matches, plain)
+            self.cache_translation(key, value)
+            return value
         if final and self.translation_history:
             try:
                 contextual = contextual_translation(translator, model_text, self.translation_history)
@@ -172,18 +198,21 @@ class LocalEngine:
                 contextual = None
             if contextual:
                 return contextual
-        key = (text.strip(), language, target)
-        if key in self.translation_cache:
-            self.translation_cache.move_to_end(key)
-            return self.translation_cache[key]
         hypotheses = translator.hypotheses(model_text, num_hypotheses=1)
         value = hypotheses[0].value.strip() if hypotheses else ""
         # Ne pas mémoriser une absence de traduction : une révision peut réessayer.
+        self.cache_translation(key, value)
+        return value
+
+    def cache_translation(self, key, value):
         if value:
             self.translation_cache[key] = value
             if len(self.translation_cache) > 64:
                 self.translation_cache.popitem(last=False)
-        return value
+
+    def take_notices(self):
+        notices, self.notices = self.notices, []
+        return notices
 
     def reset_translation_context(self):
         self.translation_history = []

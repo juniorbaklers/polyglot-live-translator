@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.19.0") return;
-scope.__polyglotContentVersion = "1.19.0";
+if (scope.__polyglotContentVersion === "1.20.0") return;
+scope.__polyglotContentVersion = "1.20.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -325,7 +325,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.19.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.20.0"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});
@@ -355,12 +355,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     root!.querySelector<HTMLButtonElement>('[data-stop]')!.disabled = false;
     setNotice(message.text);
   }
-  if (message.type === 'overlay.subtitle') {
+  if (message.type === 'overlay.subtitle' || (message.type === 'overlay.hide' && (message.original || message.translation))) {
     const original = String(message.original ?? '').trim();
     const translation = String(message.translation ?? '').trim();
     if (!original && !translation) return;
     ensureOverlay();
-    if (!hiddenByUser) panel!.style.display = 'block';
+    if (message.type === 'overlay.hide') panel!.style.display = 'none';
+    else if (!hiddenByUser) panel!.style.display = 'block';
     const id = typeof message.id === 'string' ? message.id : undefined;
     const revision = Number(message.revision) || 0;
     const existing = id ? transcriptHistory.findIndex((item) => item.id === id) : -1;

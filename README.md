@@ -122,7 +122,7 @@ https://github.com/argosopentech/argos-translate.
 
 ## Extension 1.7.0 et DevOps
 
-Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v5).
+Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v10).
 
 La version 1.7.0 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
 
@@ -242,4 +242,14 @@ Les réglages avancés proposent 18 choix, dont Général : santé, droit, éduc
 
 ### Version 1.19 : IA, ML, deep learning et développement
 
-Quatre sujets distincts portent la liste à 22 choix (dont Général) : IA générative, machine learning, deep learning et développement logiciel. Ils fournissent du vocabulaire de reconnaissance, sans activer un modèle à instructions. Les experts à prompts et le glossaire source/cible d’Immersive Translate ne sont pas intégrés au moteur Argos. Voir `docs/MISE_A_JOUR_1_19.txt`.
+Quatre sujets distincts portent la liste à 22 choix (dont Général) : IA générative, machine learning, deep learning et développement logiciel. Ils fournissent du vocabulaire de reconnaissance, sans activer un modèle à instructions. À cette version, les experts à prompts et le glossaire source/cible n’étaient pas encore intégrés ; voir la version 1.20 ci-dessous. Voir `docs/MISE_A_JOUR_1_19.txt`.
+
+### Version 1.20 : experts locaux, terminologie multilingue et voix naturelles
+
+Les stratégies Général, Technique, Cours, Oral et Personnalisé utilisent Ollama local pour les passages finalisés, le sujet sélectionné, deux passages de contexte et les termes applicables. En cas d’absence, d’erreur ou de lenteur (8 secondes), la session revient sur Argos avec une notification. Le choix automatique respecte un budget prudent de RAM parmi les modèles déjà installés ; Ollama gère CPU/GPU. Aucun téléchargement implicite ni modèle cloud, vérifié avec `/api/show`. Les stratégies sont originales, inspirées du principe des experts d’[Immersive Translate](https://immersivetranslate.com/en/docs/prompts/).
+
+Le glossaire versionné fonctionne aussi avec Argos, dans toutes les directions actives. Les codes de langue restent extensibles indépendamment des modèles installés. Import/export JSON, formulaire d’ajout et 72 entrées IA optionnelles couvrant les 12 directions entre en/fr/es/zh. Un domaine spécifique prime sur une entrée générale. Les marqueurs sont vérifiés ; si Argos les modifie, une traduction par fragments conserve les termes au prix du naturel. Les corrections exactes restent prioritaires.
+
+Piper est facultatif : `INSTALLER_VOIX.cmd` installe une voix pour la langue choisie. Les WAV sont joués hors de l’onglet capturé, avec repli sur une voix système locale. Une seule voix est chargée en mémoire ; lecture successive, vitesse réglable, dédoublonnage et file bornée avec alerte de retard. Les phrases non lues lors d’un débordement restent dans l’historique. L’arrêt annule la voix et rétablit l’audio original.
+
+Voir [mise à jour et activation](docs/MISE_A_JOUR_1_20.txt). Un WAV Piper français a été généré réellement sur CPU ; le routage Ollama et ses erreurs sont testés avec des doubles. Il reste à mesurer un modèle IA réel et à valider la lecture complète dans Chrome/Edge sur Windows. Cette version ne promet pas la qualité ni la synchronisation d’un doublage YouTube préparé.

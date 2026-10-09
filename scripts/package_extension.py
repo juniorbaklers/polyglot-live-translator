@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE_FILES = ["local_translate.py", "verification_legere.py", "requirements-leger.txt", "INSTALLER_LEGER.cmd", "DEMARRER_LEGER.cmd", "DIAGNOSTIC_ESPACE.cmd", "diagnostic_espace.py", "languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
+ENGINE_FILES = ["terminology.py", "ai_experts.py", "neural_voice.py", "install_voice.py", "INSTALLER_VOIX.cmd", "local_translate.py", "verification_legere.py", "requirements-leger.txt", "INSTALLER_LEGER.cmd", "DEMARRER_LEGER.cmd", "DIAGNOSTIC_ESPACE.cmd", "diagnostic_espace.py", "languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
 
 
 def package(output, extension_only=False):
@@ -17,15 +17,15 @@ def package(output, extension_only=False):
     for filename in ("background.js", "offscreen.js", "content.js", "popup.js", "popup.html", "offscreen.html"):
         if not (dist / filename).is_file():
             raise ValueError(f"Fichier compilé manquant : {filename}")
-    protocol = "polyglot-local-free-v9"
+    protocol = "polyglot-local-free-v10"
     if protocol not in (dist / "offscreen.js").read_text() or protocol not in (ROOT / "apps/local-engine/server.py").read_text():
         raise ValueError("Versions moteur/extension incompatibles")
     entries = [(f"extension/{path.relative_to(dist).as_posix()}", path) for path in dist.rglob('*') if path.is_file()]
     if extension_only:
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_19.txt"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_20.txt"), ("LICENSE", ROOT / "LICENSE")]
     else:
         entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
-        entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("MISE_A_JOUR_1_19.txt", ROOT / "docs/MISE_A_JOUR_1_19.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("MISE_A_JOUR_1_20.txt", ROOT / "docs/MISE_A_JOUR_1_20.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(entries):

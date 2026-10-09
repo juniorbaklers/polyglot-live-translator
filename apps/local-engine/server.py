@@ -11,10 +11,12 @@ from caption_buffer import CaptionBuffer
 from startup import single_instance
 from preferences import validate_preferences
 from languages import LANGUAGES
+from neural_voice import NeuralVoice
+from pathlib import Path
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v9"
+ENGINE_ID = "polyglot-local-free-v10"
 EXTENSION_ORIGIN = re.compile(r"chrome-extension://[a-p]{32}")
 MAX_AUDIO_BYTES = 2_000_000
 
@@ -23,6 +25,7 @@ class LocalService:
     def __init__(self, engine):
         self.engine = engine
         self.active_connection = None
+        self.voice = NeuralVoice(Path(__file__).resolve().parent / "models" / "voices")
 
     async def handle(self, socket):
         token = None
@@ -34,6 +37,9 @@ class LocalService:
                                  getattr(self.engine, "reset_translation_context", None))
         async def send(message):
             await socket.send(json.dumps(message, ensure_ascii=False))
+            if message.get("type") == "audio.ack" and hasattr(self.engine, "take_notices"):
+                for detail in self.engine.take_notices():
+                    await socket.send(json.dumps({"type": "notice", "message": detail}, ensure_ascii=False))
         try:
             async for raw in socket:
                 try:
@@ -79,6 +85,17 @@ class LocalService:
                         captions.translate_drafts = translate_drafts
                         capturing = True
                         await send({"type": "state", "state": "capturing", "detail": "Moteur local gratuit connecté"})
+                    elif kind == "voice.synthesize":
+                        if not capturing:
+                            raise ValueError("Session active requise")
+                        request_id = message.get("id")
+                        if not isinstance(request_id, int) or isinstance(request_id, bool) or request_id < 0:
+                            raise ValueError("Identifiant vocal invalide")
+                        try:
+                            audio = await asyncio.to_thread(self.voice.synthesize, message.get("text"), message.get("language"))
+                            await send({"type": "voice.result", "id": request_id, "audio": audio})
+                        except Exception as error:
+                            await send({"type": "voice.result", "id": request_id, "error": str(error)})
                     elif kind == "session.stop":
                         results = await asyncio.to_thread(captions.finish) if input_mode == "captions" else await asyncio.to_thread(self.engine.finish, target)
                         for result in results:

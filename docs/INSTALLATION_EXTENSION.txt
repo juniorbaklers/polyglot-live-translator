@@ -1,4 +1,4 @@
-MISE À JOUR 1.19 : lire MISE_A_JOUR_1_19.txt. Mettre à jour le moteur ET l’extension.
+MISE À JOUR 1.20 : lire MISE_A_JOUR_1_20.txt. Mettre à jour le moteur ET l’extension.
 
 MISE À JOUR 1.18 : lire MISE_A_JOUR_1_18.txt. Mettre à jour le moteur ET l’extension.
 

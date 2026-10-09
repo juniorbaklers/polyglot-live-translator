@@ -2,7 +2,7 @@
 const OFFSCREEN_PATH = "offscreen.html";
 import { deliverTranslation, outputMode, stopSpeech } from "./output";
 
-interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; inputMode?: string; muteOriginal?: boolean; originalTabMuted?: boolean; }
+interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; inputMode?: string; muteOriginal?: boolean; originalTabMuted?: boolean; voiceEngine?: string; voiceRate?: number; }
 
 async function applyOriginalAudio(active: ActiveCapture) {
   const muted = active.muteOriginal === true && active.outputMode !== "subtitles";
@@ -35,8 +35,8 @@ async function ensureOffscreenDocument() {
   if (contexts.length) return;
   await chrome.offscreen.createDocument({
     url: OFFSCREEN_PATH,
-    reasons: [chrome.offscreen.Reason.USER_MEDIA],
-    justification: "Capturer le son de l’onglet uniquement après l’action de l’utilisateur"
+    reasons: [chrome.offscreen.Reason.USER_MEDIA, chrome.offscreen.Reason.BLOBS],
+    justification: "Capturer le son demandé et créer les fichiers audio locaux de la voix traduite pendant la session"
   });
 }
 
@@ -50,7 +50,7 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.19.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.20.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
@@ -61,7 +61,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
       await ensureContent(message.tabId);
       await ensureOffscreenDocument();
-      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections", "overlayReadingMode", "muteOriginal", "recognitionQuality"]);
+      const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "outputMode", "inputMode", "domain", "glossary", "corrections", "overlayReadingMode", "muteOriginal", "recognitionQuality", "terminology", "translationEngine", "expert", "aiModel", "expertPrompt", "voiceEngine", "voiceRate"]);
       settings.muteOriginal = settings.muteOriginal !== false;
       settings.outputMode = outputMode(settings.outputMode);
       if (!settings.inputMode || settings.inputMode === "auto") {
@@ -77,7 +77,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       });
       stopSpeech();
       await chrome.storage.session.remove("captureError");
-      const active: ActiveCapture = { tabId: message.tabId, outputMode: outputMode(settings.outputMode), targetLanguage: settings.targetLanguage ?? "fr", inputMode: settings.inputMode ?? "audio", muteOriginal: settings.muteOriginal };
+      const active: ActiveCapture = { tabId: message.tabId, outputMode: outputMode(settings.outputMode), targetLanguage: settings.targetLanguage ?? "fr", inputMode: settings.inputMode ?? "audio", muteOriginal: settings.muteOriginal, voiceEngine: settings.voiceEngine ?? "system", voiceRate: settings.voiceRate ?? 1 };
       if (active.inputMode === "captions") active.originalTabMuted = (await chrome.tabs.get(message.tabId)).mutedInfo?.muted ?? false;
       await chrome.storage.session.set({activeCapture: active});
       started = true;
@@ -228,7 +228,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const active = await activeCapture();
       if (!active || active.tabId !== message.tabId) { sendResponse({ ok: false }); return; }
       await deliverTranslation(active.tabId, outputMode(active.outputMode), active.targetLanguage, message.original, message.translation,
-        { id: message.id, revision: message.revision, final: message.final, bounded: message.bounded, start: message.start, end: message.end, timing: message.timing, origin: message.origin, uncertainWords: message.uncertainWords, sourceLanguage: message.sourceLanguage, targetLanguage: message.targetLanguage }, !active.stopping);
+        { id: message.id, revision: message.revision, final: message.final, bounded: message.bounded, start: message.start, end: message.end, timing: message.timing, origin: message.origin, uncertainWords: message.uncertainWords, sourceLanguage: message.sourceLanguage, targetLanguage: message.targetLanguage }, !active.stopping, {engine: active.voiceEngine, rate: active.voiceRate});
       sendResponse({ ok: true });
     })().catch(() => sendResponse({ ok: false }));
     return true;
