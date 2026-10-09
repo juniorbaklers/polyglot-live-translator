@@ -1,0 +1,55 @@
+POLYGLOT LIVE 1.19 — VOIX TRADUITE SANS DOUBLE VOIX
+
+Mettre à jour ensemble apps/extension/dist et apps/local-engine.
+Arrêter la traduction et le moteur avant de copier les nouveaux fichiers.
+Conserver .venv, .venv-leger, models et votre VOCABULAIRE.txt dans le moteur installé.
+Recharger l’extension dans chrome://extensions ou edge://extensions, redémarrer le moteur, puis actualiser la page vidéo.
+
+SON
+Choisir « Fenêtre + voix traduite » ou « Voix traduite seule ».
+Cocher « Couper la voix originale » (activé par défaut pour les nouveaux réglages).
+La case peut être modifiée pendant la traduction.
+En mode son, seul le retour vers les haut-parleurs est coupé : le moteur reçoit toujours l’audio.
+En mode sous-titres accessibles, l’onglet est rendu muet ; son état initial revient à l’arrêt ou en cas d’erreur.
+Le mode « Fenêtre de traduction » conserve le son original.
+La voix traduite conserve le délai de reconnaissance/traduction et nécessite une voix locale installée.
+
+COURS FOURNI
+Choisir « Anglais », cible « Français ».
+Dans les réglages avancés, activer « Précision renforcée » pour une recherche de reconnaissance plus large, potentiellement plus lente, sans nouveau modèle obligatoire.
+Pour les passages sur sondages/élections : domaine « Sondages / élections / données ».
+Ce domaine fournit du vocabulaire anglais et explicite « party » comme « political party » dans le texte envoyé au traducteur. La transcription affichée n’est pas modifiée.
+Choisir « Général » pour un autre sens de party (par exemple une fête).
+Activer les sous-titres anglais du lecteur si disponibles : le mode Automatique utilise une piste native accessible, sinon il reconnaît le son.
+Cette version ne garantit pas une reconnaissance ou une traduction parfaite et ne récupère pas tous les sous-titres spécifiques à chaque plateforme.
+
+SUJETS DISPONIBLES
+• Général
+• Informatique / DevOps
+• Géographie / SIG / FME
+• Commerce / comptabilité
+• Sondages / élections / données
+• Santé / médecine
+• Droit / justice
+• Éducation / pédagogie
+• Sciences / physique / biologie
+• Mathématiques / statistiques
+• Finance / économie
+• Tourisme / voyages
+• Musique / chant
+• Religion / spiritualité
+• Sport
+• Ingénierie / construction
+• Agriculture / environnement
+• Actualités / médias
+
+Choisir le sujet avant de démarrer. Pour changer de sujet pendant un cours : arrêter, modifier le sujet, puis redémarrer la traduction.
+Ces choix fournissent du vocabulaire anglais/français de reconnaissance, sans télécharger de nouveaux modèles. Ils ne sont pas des moteurs de traduction spécialisés ; les mots espagnols/chinois peuvent être ajoutés dans le vocabulaire personnel.
+
+QUATRE SUJETS SUPPLÉMENTAIRES
+Intelligence artificielle / IA générative
+Machine learning / apprentissage automatique
+Deep learning / réseaux neuronaux
+Développement logiciel / programmation
+
+Ces sujets ajoutent du vocabulaire à la reconnaissance, pas un moteur LLM ni un expert à prompts. Le vocabulaire personnel actuel guide la reconnaissance et ne constitue pas un glossaire source → traduction imposée.

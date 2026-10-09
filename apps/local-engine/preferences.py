@@ -4,6 +4,11 @@ from languages import LANGUAGES
 
 DOMAINS = {
     "general": "",
+    "ia": "artificial intelligence, AI, generative AI, large language model, LLM, prompt, inference, token, RAG, intelligence artificielle, modèle de langage",
+    "machine_learning": "machine learning, supervised learning, unsupervised learning, regression, classification, features, training data, overfitting, cross-validation, apprentissage automatique, surapprentissage",
+    "deep_learning": "deep learning, neural network, transformer, attention, embeddings, backpropagation, gradient descent, convolution, loss function, PyTorch, TensorFlow, apprentissage profond, réseau neuronal",
+    "developpement": "software development, source code, function, class, variable, dependency, debugging, compiler, repository, Git, unit test, framework, développement logiciel, débogage, compilateur",
+
     "informatique": "Python, JavaScript, GitHub, DevOps, API, SQL, Docker, Kubernetes",
     "geographie": "GIS, SIG, FME, ETL, QGIS, raster, vecteur, projection, Sentinel, Landsat, géoréférencement",
     "commerce": "invoice, tax, VAT, revenue, balance sheet, cash flow, profit, facture, TVA, bilan, trésorerie, marge",

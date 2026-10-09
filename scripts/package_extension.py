@@ -17,15 +17,15 @@ def package(output, extension_only=False):
     for filename in ("background.js", "offscreen.js", "content.js", "popup.js", "popup.html", "offscreen.html"):
         if not (dist / filename).is_file():
             raise ValueError(f"Fichier compilé manquant : {filename}")
-    protocol = "polyglot-local-free-v8"
+    protocol = "polyglot-local-free-v9"
     if protocol not in (dist / "offscreen.js").read_text() or protocol not in (ROOT / "apps/local-engine/server.py").read_text():
         raise ValueError("Versions moteur/extension incompatibles")
     entries = [(f"extension/{path.relative_to(dist).as_posix()}", path) for path in dist.rglob('*') if path.is_file()]
     if extension_only:
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_18.txt"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_19.txt"), ("LICENSE", ROOT / "LICENSE")]
     else:
         entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
-        entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("MISE_A_JOUR_1_18.txt", ROOT / "docs/MISE_A_JOUR_1_18.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("MISE_A_JOUR_1_19.txt", ROOT / "docs/MISE_A_JOUR_1_19.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(entries):

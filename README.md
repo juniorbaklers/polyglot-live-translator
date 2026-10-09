@@ -238,3 +238,8 @@ Voir `docs/MISE_A_JOUR_1_17.txt` pour mettre à jour les deux composants et conf
 ### Version 1.18 : 18 sujets disponibles
 
 Les réglages avancés proposent 18 choix, dont Général : santé, droit, éducation, sciences, mathématiques/statistiques, finance, tourisme, musique, religion, sport, ingénierie, agriculture et médias rejoignent les domaines existants. Chaque sujet ajoute un vocabulaire anglais/français à la reconnaissance. Ce ne sont pas des modèles de traduction spécialisés et la justesse n’est pas garantie. Les préférences existantes restent valides. Voir `docs/MISE_A_JOUR_1_18.txt` ; mettre à jour moteur et extension ensemble.
+
+
+### Version 1.19 : IA, ML, deep learning et développement
+
+Quatre sujets distincts portent la liste à 22 choix (dont Général) : IA générative, machine learning, deep learning et développement logiciel. Ils fournissent du vocabulaire de reconnaissance, sans activer un modèle à instructions. Les experts à prompts et le glossaire source/cible d’Immersive Translate ne sont pas intégrés au moteur Argos. Voir `docs/MISE_A_JOUR_1_19.txt`.
