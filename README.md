@@ -233,3 +233,8 @@ La case « Couper la voix originale » fonctionne pendant la traduction vocale, 
 « Précision renforcée » élargit la recherche Whisper à 5 hypothèses de décodage, sans changer les modèles installés ; le calcul peut prendre plus de temps. Le domaine facultatif Sondages guide la reconnaissance et explicite le sens politique de party pour la traduction anglaise, sans modifier la transcription affichée. Ce réglage est spécifique à ce domaine. La justesse de traduction n’est pas garantie.
 
 Voir `docs/MISE_A_JOUR_1_17.txt` pour mettre à jour les deux composants et configurer un cours anglais.
+
+
+### Version 1.18 : 18 sujets disponibles
+
+Les réglages avancés proposent 18 choix, dont Général : santé, droit, éducation, sciences, mathématiques/statistiques, finance, tourisme, musique, religion, sport, ingénierie, agriculture et médias rejoignent les domaines existants. Chaque sujet ajoute un vocabulaire anglais/français à la reconnaissance. Ce ne sont pas des modèles de traduction spécialisés et la justesse n’est pas garantie. Les préférences existantes restent valides. Voir `docs/MISE_A_JOUR_1_18.txt` ; mettre à jour moteur et extension ensemble.

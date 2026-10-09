@@ -10,7 +10,7 @@ const timers=new Map();
 let timerId=0;
 class LocalSocket extends EventTarget {
   static OPEN=1;
-  static engine='polyglot-local-free-v7';
+  static engine='polyglot-local-free-v8';
   static rejectCode=false;
   readyState=0;
   sent=[];
@@ -111,7 +111,7 @@ test('ancien moteur demandant un code : instruction de mise à jour et aucune se
 test('couper la restitution conserve les fichiers audio et le changement prend effet en direct',async t=>{
  t.mock.method(globalThis,'setTimeout',(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;});
  t.mock.method(globalThis,'clearTimeout',id=>timers.delete(id));
- LocalSocket.engine='polyglot-local-free-v7';LocalSocket.rejectCode=false;
+ LocalSocket.engine='polyglot-local-free-v8';LocalSocket.rejectCode=false;
  const result=await request({type:'offscreen.start',target:'offscreen',tabId:7,streamId:'stream',settings:{outputMode:'both',muteOriginal:true}});
  assert.equal(result.ok,true);assert.equal(gains.at(-1).gain.value,0);
  const ws=sockets.at(-1);
