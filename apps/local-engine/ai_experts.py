@@ -1,6 +1,7 @@
 """Experts de traduction originaux, servis exclusivement par Ollama local."""
 import json
 import http.client
+import time
 from resources import detect_resources, GIB
 
 EXPERTS = {
@@ -53,9 +54,15 @@ class LocalExpert:
     def translate(self, text, source, target, domain, terms, history):
         if self.disabled:
             return None
+        deadline = time.monotonic() + 8
+        def request(path, payload=None):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("budget de traitement de l’expert dépassé")
+            return local_request(path, payload, timeout=remaining)
         try:
             if self.model is None:
-                installed = local_request("/api/tags").get("models", [])
+                installed = request("/api/tags").get("models", [])
                 requested = self.preferences["aiModel"]
                 if not isinstance(installed, list):
                     raise ValueError("catalogue de modèles invalide")
@@ -66,7 +73,7 @@ class LocalExpert:
                     self.model = choose_installed_model(local, detect_resources().available)
                 if self.model is None:
                     raise ValueError("aucun modèle de dialogue local adapté installé")
-                details = local_request("/api/show", {"model": self.model})
+                details = request("/api/show", {"model": self.model})
                 if details.get("remote_host") or details.get("remote_model") or not isinstance(details.get("model_info"), dict) or not details["model_info"]:
                     raise ValueError("modèle distant ou origine locale non vérifiable")
                 self.thinking = "thinking" in (details.get("capabilities") or [])
@@ -81,10 +88,12 @@ class LocalExpert:
             payload = {"source_language": source, "target_language": target, "text": text,
                        "terminology": [{"source": item["term"], "target": item["translation"]} for _, _, item in terms],
                        "previous_context": history[-2:]}
-            result = local_request("/api/chat", {"model": self.model, "stream": False, **({"think": False} if self.thinking else {}),
+            result = request("/api/chat", {"model": self.model, "stream": False, **({"think": False} if self.thinking else {}),
                 "format": {"type": "object", "properties": {"translation": {"type": "string"}}, "required": ["translation"], "additionalProperties": False},
                 "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 1024}, "keep_alive": "2m",
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]})
+            if time.monotonic() > deadline:
+                raise TimeoutError("budget de traitement de l’expert dépassé")
             value = json.loads(result["message"]["content"])["translation"]
             if not isinstance(value, str) or not value.strip() or len(value) > 12000:
                 raise ValueError("réponse IA invalide")

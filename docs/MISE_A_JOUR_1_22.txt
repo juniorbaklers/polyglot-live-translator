@@ -1,0 +1,44 @@
+POLYGLOT 1.22.0 — FLUIDITE
+
+INSTALLATION
+1. Exportez votre transcription en cours et arrêtez la traduction.
+2. Arrêtez le moteur local avant de remplacer ses fichiers.
+3. Copiez les fichiers du dossier moteur-local de cette archive dans votre
+   dossier actuel. Gardez votre VOCABULAIRE.txt personnalisé, les dossiers
+   models, .venv, .venv-leger et les autres environnements déjà installés.
+4. Remplacez les fichiers du dossier de l'extension actuellement chargé
+   par ceux du dossier extension de cette archive, y compris chunks.
+5. Relancez le moteur avec votre lanceur habituel ; rechargez l'extension
+   dans chrome://extensions ou edge://extensions puis actualisez la vidéo.
+Pas de modèle supplémentaire nécessaire pour cette correction.
+Version à vérifier dans le navigateur : 1.22.0. Protocole local v11 conservé.
+
+CORRECTIONS
+- Réception et traitement séparés : file limitée, calculs ordonnés.
+- Génération Piper indépendante : elle ne bloque plus la réception/ASR.
+  Une seule synthèse est autorisée ; les résultats après arrêt sont ignorés.
+- Les segments reçus sont traités dans leur ordre avant l'état arrêté.
+- En cas de surcharge, la collecte est arrêtée et la connexion reste ouverte
+  pendant la finalisation, au lieu de couper immédiatement les réponses.
+- La finalisation de surcharge attend au plus deux minutes. Si le moteur
+  ne confirme pas sa fin, l'erreur est explicite ; les passages déjà affichés
+  restent dans l'historique. Ce n'est pas une promesse de capture illimitée.
+- Le budget de délai HTTP de l'expert est partagé entre découverte et
+  génération. Une expiration provoque le repli classique pour la session.
+  Cela n'interrompt pas de force un calcul déjà commencé dans Ollama.
+- Temps d'attente en file ajouté aux accusés du moteur (queueMs).
+
+LIMITES
+La reconnaissance et la traduction restent ordonnées dans un même travailleur
+pour protéger leur contexte. Elles ne sont pas encore deux moteurs indépendants.
+Un modèle trop lourd peut toujours dépasser la cadence d'un petit ordinateur.
+Les fichiers audio sont toujours collectés par segments de trois secondes.
+Le délai réel et la précision doivent être vérifiés sur vos vidéos.
+Pas de nouveau service payant, modèle ni modification de vos voix installées.
+
+VALIDATION
+112 tests Python réussis, un test Windows ignoré sous Linux.
+61 tests extension réussis, typecheck et compilation réussis.
+Tests de sockets réels avec calculs contrôlés : voix lente, ordre des segments,
+arrêt après vidange, réponse vocale périmée et budget d'expert.
+Les modèles réels et le confort sur Chrome/Edge Windows restent à tester.

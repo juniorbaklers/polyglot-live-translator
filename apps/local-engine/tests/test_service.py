@@ -268,3 +268,69 @@ except OSError:
 
 
 if __name__ == "__main__": unittest.main()
+
+class FluidityTests(unittest.IsolatedAsyncioTestCase):
+    asyncSetUp = ProtocolTests.asyncSetUp
+    asyncTearDown = ProtocolTests.asyncTearDown
+    send = ProtocolTests.send
+    receive = ProtocolTests.receive
+    pair = ProtocolTests.pair
+    async def test_slow_voice_does_not_block_audio_or_stop_and_stale_voice_is_suppressed(self):
+        import threading
+        from unittest.mock import Mock
+        entered, release = threading.Event(), threading.Event()
+        def synthesize(*args):
+            entered.set()
+            if not release.wait(3): raise RuntimeError('test did not release voice')
+            return 'audio'
+        self.service.voice = Mock(); self.service.voice.synthesize.side_effect = synthesize
+        try:
+            async with connect(self.url, origin='chrome-extension://' + 'a' * 32) as socket:
+                token = await self.pair(socket)
+                await self.send(socket, {'type':'session.start','token':token,'options':{'sourceLanguage':'en','targetLanguage':'fr'}})
+                await self.receive(socket)
+                await self.send(socket, {'type':'voice.synthesize','token':token,'id':10,'language':'fr','text':'Bonjour'})
+                self.assertTrue(await asyncio.to_thread(entered.wait, 1))
+                await self.send(socket, {'type':'voice.synthesize','token':token,'id':11,'language':'fr','text':'Autre'})
+                busy = await self.receive(socket)
+                self.assertEqual(busy['type'],'voice.result');self.assertIn('déjà en cours',busy['error'])
+                await self.send(socket, {'type':'audio.chunk','token':token,'sequence':1,'data':'YQ=='})
+                self.assertEqual((await self.receive(socket))['type'], 'subtitle')
+                self.assertEqual((await self.receive(socket))['type'], 'audio.ack')
+                await self.send(socket, {'type':'session.stop','token':token})
+                self.assertEqual((await self.receive(socket))['state'], 'stopped')
+                release.set()
+                while self.service.voice_jobs: await asyncio.sleep(.001)
+                with self.assertRaises(asyncio.TimeoutError): await asyncio.wait_for(socket.recv(), .05)
+        finally: release.set()
+
+    async def test_received_audio_drains_in_order_before_stop_while_voice_remains_independent(self):
+        import threading
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        def process(audio, source, target):
+            calls.append(audio)
+            if len(calls) == 1:
+                entered.set()
+                if not release.wait(3): raise RuntimeError('test did not release ASR')
+            return [{'id':audio.decode(),'revision':1,'final':True,'original':audio.decode(),'translation':audio.decode()}]
+        self.engine.process = process
+        try:
+            async with connect(self.url, origin='chrome-extension://' + 'a' * 32) as socket:
+                token = await self.pair(socket)
+                await self.send(socket, {'type':'session.start','token':token,'options':{}});await self.receive(socket)
+                await self.send(socket, {'type':'audio.chunk','token':token,'sequence':0,'data':'YQ=='})
+                self.assertTrue(await asyncio.to_thread(entered.wait, 1))
+                await self.send(socket, {'type':'audio.chunk','token':token,'sequence':1,'data':'Yg=='})
+                await self.send(socket, {'type':'session.stop','token':token})
+                # La réception reste vivante même pendant l'inférence : le refus
+                # d'un jeton invalide ne doit pas attendre la libération du modèle.
+                await self.send(socket, {'type':'audio.chunk','token':'bad','data':'Yw=='})
+                self.assertEqual((await self.receive(socket))['type'],'error')
+                release.set()
+                replies=[await self.receive(socket) for _ in range(5)]
+                self.assertEqual([r['id'] for r in replies if r['type']=='subtitle'],['a','b'])
+                self.assertEqual([r['sequence'] for r in replies if r['type']=='audio.ack'],[0,1])
+                self.assertTrue(all('queueMs' in r for r in replies if r['type']=='audio.ack'))
+                self.assertEqual(replies[-1]['state'],'stopped');self.assertEqual(calls,[b'a',b'b'])
+        finally: release.set()

@@ -90,7 +90,7 @@ class ExpertTests(unittest.TestCase):
         expert=LocalExpert(validate_preferences({'translationEngine':'ollama','expert':'technical'}))
         entries=terms()['entries']; matches=matching_terms(entries,'deep learning','en','fr','ia')
         calls=[]
-        def request(path,payload=None):
+        def request(path,payload=None,timeout=8):
             calls.append((path,payload))
             if path=='/api/tags': return {'models':[{'name':'small:local','size':GIB}]}
             if path=='/api/show': return {'model_info':{'architecture':'test'},'capabilities':['completion']}
@@ -157,3 +157,23 @@ class VoiceTests(unittest.TestCase):
                 with wave.open(io.BytesIO(base64.b64decode(audio))) as wav:self.assertEqual(wav.getframerate(),22050)
 
 if __name__=='__main__':unittest.main()
+
+class ExpertBudgetTests(unittest.TestCase):
+    def test_discovery_and_generation_share_the_same_timeout_budget(self):
+        expert=LocalExpert(validate_preferences({'translationEngine':'ollama'}))
+        budgets=[]
+        def request(path,payload=None,timeout=8):
+            budgets.append(timeout)
+            if path=='/api/tags':return {'models':[{'name':'local','size':GIB}]}
+            if path=='/api/show':return {'model_info':{'architecture':'test'},'capabilities':['completion']}
+            return {'message':{'content':'{"translation":"Bonjour"}'}}
+        with patch('ai_experts.time.monotonic',side_effect=[0,2,5,6,7]), patch('ai_experts.local_request',side_effect=request), patch('ai_experts.detect_resources',return_value=SimpleNamespace(available=6*GIB)):
+            self.assertEqual(expert.translate('Hello','en','fr','general',[],[]),'Bonjour')
+        self.assertEqual(budgets,[6,3,2])
+
+    def test_expired_budget_stops_discovery_and_uses_session_fallback(self):
+        expert=LocalExpert(validate_preferences({'translationEngine':'ollama'}))
+        with patch('ai_experts.time.monotonic',side_effect=[0,9]), patch('ai_experts.local_request') as request:
+            self.assertIsNone(expert.translate('Hello','en','fr','general',[],[]))
+            request.assert_not_called()
+        self.assertTrue(expert.disabled);self.assertIn('budget',expert.warning)
