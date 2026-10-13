@@ -49,9 +49,9 @@ class TerminologyTests(unittest.TestCase):
         calls=[]
         def translate(text):
             calls.append(text)
-            return 'marqueur perdu' if 'ZXQ' in text else {'We use':'Nous utilisons','.':'.'}[text]
-        self.assertEqual(translate_with_terms(text,matches,translate), 'Nous utilisons apprentissage profond.')
-        self.assertEqual(calls[1:], ['We use','.'])
+            return 'marqueur perdu' if 'ZXQ' in text else {'We use deep learning.':'Nous utilisons l’apprentissage profond.'}[text]
+        self.assertEqual(translate_with_terms(text,matches,translate), 'Nous utilisons l’apprentissage profond.')
+        self.assertEqual(calls[1:], ['We use deep learning.'])
 
     def test_engine_applies_terms_but_exact_phrase_correction_has_priority(self):
         engine = LocalEngine.__new__(LocalEngine)
@@ -79,7 +79,8 @@ class ExpertTests(unittest.TestCase):
         self.assertEqual(engine.translate_text('deep learning','en','fr',True),'Traduction IA')
         engine.translation_cache.clear();expert.translate.return_value=None;expert.warning='Repli local'
         self.assertEqual(engine.translate_text('deep learning','en','fr',True),'apprentissage profond')
-        self.assertEqual(engine.take_notices(),['Repli local']);self.assertEqual(engine.take_notices(),[])
+        notices=engine.take_notices()
+        self.assertEqual(notices[-1],'Repli local');self.assertIn('glossaire',notices[0]);self.assertEqual(engine.take_notices(),[])
 
     def test_ram_budget_never_downloads_and_excludes_cloud_embeddings(self):
         models=[{'name':'small:local','size':GIB},{'name':'large:local','size':8*GIB},{'name':'embed:local','size':GIB},{'name':'small:cloud','size':GIB}]

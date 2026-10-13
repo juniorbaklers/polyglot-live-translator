@@ -11,10 +11,12 @@ def ps_quote(value):
     return "'" + str(value).replace("'", "''") + "'"
 
 
-def create_shortcut(link, pythonw, root, precision=False):
+def create_shortcut(link, pythonw, root, precision=False, light=False):
     root = Path(root)
     launcher = root / 'launcher.py'
     arguments = '"' + str(launcher) + '"' + (' --precision' if precision else '')
+    if light:
+        arguments += ' --light'
     script = ("$ws=New-Object -ComObject WScript.Shell; "
               f"$s=$ws.CreateShortcut({ps_quote(link)}); "
               f"$s.TargetPath={ps_quote(pythonw)}; $s.Arguments={ps_quote(arguments)}; "

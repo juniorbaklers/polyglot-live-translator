@@ -1,0 +1,61 @@
+[
+  {
+    "id": "sig-fme",
+    "source": "en",
+    "target": "fr",
+    "text": "FME helps us transform GIS data.",
+    "review": "Vérifier SIG, FME et le sens de transformer les données.",
+    "domain": "geographie"
+  },
+  {
+    "id": "certification",
+    "source": "en",
+    "target": "fr",
+    "text": "Once you have obtained the FME certification, it will be easier to find a better job.",
+    "review": "Une fois la certification obtenue, il sera plus facile de trouver un meilleur emploi.",
+    "domain": "geographie"
+  },
+  {
+    "id": "numbers",
+    "source": "en",
+    "target": "fr",
+    "text": "We have 3 maps and 12 layers.",
+    "review": "Conserver 3 cartes et 12 couches."
+  },
+  {
+    "id": "negation",
+    "source": "en",
+    "target": "fr",
+    "text": "Do not delete the original data.",
+    "review": "Conserver l’interdiction de supprimer les données originales."
+  },
+  {
+    "id": "decimal",
+    "source": "en",
+    "target": "fr",
+    "text": "The distance is 10.5 km.",
+    "review": "Conserver la distance de 10,5 km."
+  },
+  {
+    "id": "devops",
+    "source": "en",
+    "target": "fr",
+    "text": "Deploy the application only after the tests pass.",
+    "review": "Respecter l’ordre : tests réussis avant déploiement.",
+    "domain": "informatique"
+  },
+  {
+    "id": "french-english",
+    "source": "fr",
+    "target": "en",
+    "text": "Ce cours ne nécessite pas dix ans d’expérience.",
+    "review": "Conserver la négation et dix ans ; les nombres en lettres nécessitent une relecture humaine."
+  },
+  {
+    "id": "spanish-french",
+    "source": "es",
+    "target": "fr",
+    "text": "No cambie las coordenadas del mapa.",
+    "review": "Ne pas modifier les coordonnées de la carte."
+  }
+]

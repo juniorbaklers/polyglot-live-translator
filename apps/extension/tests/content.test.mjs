@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.22.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.23.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -331,4 +331,20 @@ test('sous-titres africains accessibles : dioula, baoulé et wolof transmis sans
   assert.equal(messages.find(m=>m.type==='caption.cue').cue.language,code);
   receive({type:'captions.stop'});dom.window.close();
  }
+});
+
+test('sauvegarde pendant la lecture : récupération des seules phrases finales après rechargement',async()=>{
+ const first=setup();await tick();
+ first.receive({type:'overlay.subtitle',id:'saved-final',revision:1,final:true,original:'Do not delete.',translation:'Ne supprimez pas.'});
+ first.receive({type:'overlay.subtitle',id:'unfinished',revision:1,final:false,original:'Next',translation:'Suite'});
+ await tick();const archive=JSON.parse(JSON.stringify(first.saved().transcriptArchive));
+ assert.equal(archive.rows.length,1);assert.equal(archive.rows[0].translation,'Ne supprimez pas.');
+ first.dom.window.close();
+ const restored=setup('<body></body>',{transcriptArchive:archive});await tick();
+ restored.receive({type:'overlay.reveal',active:false});
+ restored.root.querySelector('[data-restore]').click();await tick();
+ assert.equal(restored.root.querySelectorAll('.phrase').length,1);
+ assert.equal(restored.root.querySelector('.translation').textContent,'Ne supprimez pas.');
+ assert.equal(restored.root.querySelector('.transcript').getAttribute('tabindex'),'0');
+ assert.equal(restored.root.querySelector('.document').hidden,false);restored.dom.window.close();
 });
