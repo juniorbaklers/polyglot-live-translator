@@ -22,10 +22,10 @@ def package(output, extension_only=False):
         raise ValueError("Versions moteur/extension incompatibles")
     entries = [(f"extension/{path.relative_to(dist).as_posix()}", path) for path in dist.rglob('*') if path.is_file()]
     if extension_only:
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_21.txt"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_22.txt"), ("LICENSE", ROOT / "LICENSE")]
     else:
         entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
-        entries += [("INSTALLATION.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("MISE_A_JOUR_1_21.txt", ROOT / "docs/MISE_A_JOUR_1_21.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_22.txt"), ("INSTALLATION_COMPLETE.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(entries):

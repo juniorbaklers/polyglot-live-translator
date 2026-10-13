@@ -84,7 +84,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "offscreen.text" || message.type === "offscreen.flush") {
     try {
       if (inputMode !== "captions" || stopping || !token || socket?.readyState !== WebSocket.OPEN) throw new Error("Session de sous-titres inactive");
-      if (pending >= 6) { const detail = "Le moteur ne suit plus les sous-titres. Mettez la vidéo en pause puis relancez la traduction."; fail(detail); throw new Error(detail); }
       const next = sequence++;
       socket.send(JSON.stringify(message.type === "offscreen.flush"
         ? {type: "text.flush", token, sequence: next, position: message.position}
@@ -92,6 +91,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sentAt.set(next, Date.now()); pending++;
       if (pending === 3) report("Le moteur prend du retard sur les sous-titres : mettez la vidéo en pause.");
       if (pending === 1) watchForReply(generation);
+      if (pending >= 6) drainOverload("Le moteur ne suit plus les sous-titres. Mettez la vidéo en pause puis relancez la traduction ; les passages affichés restent dans l’historique.");
       sendResponse({ok: true});
     } catch (error) { sendResponse({ok: false, error: String(error)}); }
     return;
@@ -169,7 +169,7 @@ async function start(message: { streamId: string; tabId: number; settings: Recor
           const sent = sentAt.get(response.sequence); sentAt.delete(response.sequence);
           pending = Math.max(0, pending - 1);
           chrome.runtime.sendMessage({type: "capture.metrics", tabId: activeTabId, processingMs: response.processingMs,
-            responseMs: sent === undefined ? undefined : Date.now() - sent, pending, inputMode}).catch(() => undefined);
+            responseMs: sent === undefined ? undefined : Date.now() - sent, queueMs: response.queueMs, pending, inputMode}).catch(() => undefined);
           clearTimeout(watchdog);
           if (pending) watchForReply(run);
         }
@@ -188,7 +188,6 @@ function beginSegment(run: number) {
   segment.addEventListener("dataavailable", (event) => {
     sending = sending.then(async () => {
       if (generation !== run || !event.data.size || socket?.readyState !== WebSocket.OPEN || !token) return;
-      if (pending >= 6) { fail("Le moteur local est trop lent pour suivre la vidéo. Mettez la vidéo en pause puis relancez la capture."); return; }
       const data = await blobToBase64(event.data);
       if (generation !== run || socket?.readyState !== WebSocket.OPEN) return;
       const next = sequence++;
@@ -197,6 +196,7 @@ function beginSegment(run: number) {
       pending++;
       if (pending === 3) report("Le moteur prend du retard. Réduisez la vitesse de la vidéo si ce message revient.");
       if (pending === 1) watchForReply(run);
+      if (pending >= 6 && !stopping) drainOverload("Le moteur prend trop de retard. La capture a été arrêtée pour finaliser les passages reçus. Mettez la vidéo en pause puis relancez la traduction.");
     }).catch((error) => { if (generation === run) fail(String(error)); });
   });
   segment.addEventListener("stop", () => { if (generation === run) beginSegment(run); });
@@ -209,9 +209,22 @@ function watchForReply(run: number) {
   watchdog = setTimeout(() => { if (generation === run) fail("Le moteur local n’a pas répondu au segment audio depuis deux minutes."); }, 120000);
 }
 
+function drainOverload(detail: string) {
+  if (stopping) return;
+  const tabId = activeTabId;
+  const run = generation;
+  // Arrêter la collecte, envoyer le dernier fichier et attendre les réponses,
+  // au lieu de fermer le socket et de perdre les phrases encore en attente.
+  finishStop(120000).then(() => {
+    if (tabId !== null && generation === run + 1 && activeTabId === null) chrome.runtime.sendMessage({type: "capture.failed", tabId, text: detail}).catch(() => undefined);
+  }).catch(error => {
+    if (tabId !== null && generation === run + 1 && activeTabId === null) chrome.runtime.sendMessage({type: "capture.failed", tabId, text: `Finalisation interrompue : ${String(error)}. Les passages affichés restent dans l’historique.`}).catch(() => undefined);
+  });
+}
+
 // Arrête immédiatement la collecte, puis laisse le moteur stabiliser le texte
 // déjà capturé. Aucune nouvelle voix n'est lancée pendant cette finalisation.
-function finishStop(): Promise<void> {
+function finishStop(drainTimeout = 15000): Promise<void> {
   if (stopTask) return stopTask;
   if (socket?.readyState !== WebSocket.OPEN || !token) { stop(); return Promise.resolve(); }
   stopping = true;
@@ -231,8 +244,8 @@ function finishStop(): Promise<void> {
     await sending;
     if (generation !== run || ws.readyState !== WebSocket.OPEN) return;
     report("Capture arrêtée — finalisation du dernier texte…");
-    await new Promise<void>((resolve) => {
-      const deadline = setTimeout(resolve, 15000);
+    await new Promise<void>((resolve, reject) => {
+      const deadline = setTimeout(() => reject(new Error("Le moteur n’a pas confirmé la finalisation des passages en attente")), drainTimeout);
       stopReply = () => { clearTimeout(deadline); resolve(); };
       ws.send(JSON.stringify({ type: "session.stop", token: sessionToken }));
     });

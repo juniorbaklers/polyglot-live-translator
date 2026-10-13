@@ -141,3 +141,29 @@ test('voix Piper hors du flux capturé : lecture, arrêt et réponse tardive',as
  ws.reply({type:'voice.result',id:cancelledId,audio:Buffer.from('late').toString('base64')});await flush();assert.equal(audios.length,1);
  await request({type:'offscreen.stop',target:'offscreen'});assert.equal(timers.size,0);
 });
+
+test('surcharge : conserver les passages reçus et attendre la finalisation avant de fermer',async t=>{
+ const original=LocalSocket.prototype.send;
+ t.mock.method(LocalSocket.prototype,'send',function(raw){
+   const m=JSON.parse(raw);
+   if(m.type==='text.chunk'||m.type==='session.stop'){this.sent.push(m);return;}
+   return original.call(this,raw);
+ });
+ const before=messages.length;
+ await request({type:'offscreen.start',target:'offscreen',tabId:7,settings:{inputMode:'captions',sourceLanguage:'en'}});
+ const ws=sockets.at(-1);
+ for(let i=0;i<6;i++){
+   const r=await request({type:'offscreen.text',target:'offscreen',cue:{text:`Phrase ${i}.`,language:'en',start:i,end:i+1}});
+   assert.equal(r.ok,true);
+ }
+ await flush();
+ assert.equal(ws.sent.filter(m=>m.type==='text.chunk').length,6);
+ assert.equal(ws.sent.at(-1).type,'session.stop');assert.equal(ws.readyState,1);
+ assert.equal(messages.slice(before).some(m=>m.type==='capture.failed'),false);
+ ws.reply({type:'subtitle',id:'last-queued',revision:1,final:true,original:'Last',translation:'Dernière phrase'});
+ ws.reply({type:'audio.ack',sequence:5,processingMs:15,queueMs:40});
+ ws.reply({type:'state',state:'stopped'});await flush();
+ assert.equal(ws.readyState,3);
+ const delivered=messages.slice(before);assert.ok(delivered.findIndex(m=>m.type==='subtitle')<delivered.findIndex(m=>m.type==='capture.failed'));
+ assert.equal(delivered.find(m=>m.type==='capture.metrics').queueMs,40);
+});
