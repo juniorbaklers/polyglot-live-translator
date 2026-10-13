@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.20.0") return;
-scope.__polyglotContentVersion = "1.20.0";
+if (scope.__polyglotContentVersion === "1.21.0") return;
+scope.__polyglotContentVersion = "1.21.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -249,7 +249,7 @@ function renderHistory() {
     const row = document.createElement('div'); row.className = 'phrase'; row.dataset.pending = String(!item.final);
     const meta = document.createElement('div'); meta.className = 'phrase-head';
     const route = document.createElement('span');
-    const names: Record<string,string> = {en:'Anglais',fr:'Français',es:'Espagnol',zh:'Chinois simplifié'};
+    const names: Record<string,string> = {en:'Anglais',fr:'Français',es:'Espagnol',zh:'Chinois simplifié',dyu:'Dioula',bci:'Baoulé',wol:'Wolof'};
     route.textContent = item.sourceLanguage && item.targetLanguage ? `${names[item.sourceLanguage] ?? item.sourceLanguage} → ${names[item.targetLanguage] ?? item.targetLanguage}` : 'Traduction';
     const stateLabel = document.createElement('span'); stateLabel.className = 'state-label';
     const review = Boolean(item.bounded || item.uncertainWords?.length);
@@ -325,7 +325,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.20.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.21.0"}); return; }
   if (message.type === "overlay.reveal") {
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";
     Object.assign(panel!.style, {left: "auto", top: "auto", right: "24px", bottom: "24px"});
@@ -517,7 +517,7 @@ function accessibleCaptions(source: string) {
   for (const video of videos) {
     const track = Array.from(video.textTracks).find(track =>
       ['subtitles','captions'].includes(track.kind) && track.mode !== 'disabled' &&
-      ['en','fr','es','zh'].includes(track.language.split('-')[0] || source) &&
+      ['en','fr','es','zh','dyu','bci','wol'].includes(track.language.split('-')[0] || source) &&
       (source === 'auto' || !track.language || track.language.split('-')[0] === source));
     if (track) return {video, track};
   }
@@ -526,7 +526,7 @@ function accessibleCaptions(source: string) {
 function startCaptions(source: string): {ok: boolean; error?: string} {
   stopCaptions?.();
   const selection = accessibleCaptions(source);
-  if (!selection) return {ok: false, error: 'Activez une piste originale accessible en anglais, français, espagnol ou chinois, ou utilisez le son.'};
+  if (!selection) return {ok: false, error: ['dyu','bci','wol'].includes(source) ? 'Activez une piste de sous-titres accessible dans la langue choisie. La reconnaissance audio en dioula, baoulé et wolof n’est pas disponible.' : 'Activez une piste de sous-titres accessible dans la langue choisie, ou utilisez le son.'};
   const {video} = selection;
   const choose = () => accessibleCaptions(source)?.video === video ? accessibleCaptions(source)?.track : undefined;
   captionVideo = video;

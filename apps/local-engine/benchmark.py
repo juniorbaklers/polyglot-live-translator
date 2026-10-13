@@ -27,7 +27,7 @@ def main():
     parser.add_argument("audio", type=Path)
     parser.add_argument("reference", type=Path)
     parser.add_argument("--source", choices=["en", "fr", "es", "zh"], required=True)
-    parser.add_argument("--target", choices=["en", "fr", "es", "zh"], default="fr")
+    parser.add_argument("--target", choices=["en", "fr", "es", "zh", "dyu", "bci", "wol"], default="fr")
     parser.add_argument("--output", type=Path, default=Path("rapport-precision.json"))
     args = parser.parse_args()
     from offline_guard import enable

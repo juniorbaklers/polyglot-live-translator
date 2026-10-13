@@ -1,0 +1,84 @@
+POLYGLOT 1.21 — DIOULA, BAOULÉ ET WOLOF
+
+MISE À JOUR
+1. Arrêtez la traduction et le moteur local.
+2. Décompressez la nouvelle archive GitHub.
+3. Remplacez les fichiers de votre extension par apps/extension/dist.
+4. Copiez les nouveaux fichiers de apps/local-engine dans votre moteur actuel.
+   Gardez .venv, .venv-leger, models et votre VOCABULAIRE.txt personnel.
+5. Rechargez l'extension dans chrome://extensions ou edge://extensions.
+Les deux parties utilisent le protocole v11 et la version 1.21.0.
+
+INSTALLER LES NOUVELLES LANGUES UNE FOIS
+Dans votre dossier de moteur, lancez INSTALLER_LANGUES_AFRICAINES.cmd.
+Choisissez 1 pour dioula + wolof, 2 pour baoulé, ou 3 pour les trois langues.
+Internet est nécessaire pour cette installation seulement. Une fenêtre reste
+ouverte pendant les téléchargements et la conversion des modèles. Attendez le
+message Modèle prêt. Des phrases réellement traduites servent de vérification.
+Relancez ensuite votre moteur habituel, actualisez la page vidéo, puis choisissez
+Dioula, Baoulé ou Wolof comme langue cible dans l'extension.
+Les modèles sont installés dans models/african/nllb et models/african/baoule.
+Ne lancez pas .venv-afrique comme moteur : cet environnement séparé sert à convertir
+les modèles sans changer les dépendances de .venv ou .venv-leger.
+
+La conversion nécessite au moins 5 Gio de RAM disponible et 8 Gio d'espace libre.
+Les téléchargements initiaux sont de plusieurs Go ; les modèles sont ensuite
+conservés en int8. Les poids d'origine temporaires sont supprimés à la fin.
+Le fonctionnement utilise CTranslate2 et tokenizers, déjà dépendances de Whisper,
+sans PyTorch dans le chemin de traduction. CPU, quatre threads maximum et un seul
+modèle africain chargé à la fois. Au moins 2 Gio de RAM disponible au chargement.
+Un modèle absent ou une mémoire insuffisante produit un message explicite ; le
+moteur ne télécharge rien pendant la vidéo.
+
+CE QUI FONCTIONNE
+- Audio français, anglais, espagnol ou chinois reconnu par le moteur actuel,
+  puis traduction du texte vers dioula, baoulé ou wolof.
+- Sous-titres accessibles en dioula, baoulé ou wolof vers français ou une autre
+  langue installée. Activez la piste dans le lecteur et choisissez sa langue.
+- Traduction entre les sept langues exposées, avec pivot français si nécessaire.
+- Glossaire, corrections exactes, historique et exports avec les codes ISO
+  dyu (dioula), bci (baoulé), wol (wolof).
+- Les autres langues, Experts IA, réglages vocaux et installation classique sont conservés.
+
+LIMITES À COMPRENDRE
+Les trois nouvelles langues sont expérimentales. Le modèle spécialisé les traduit
+indépendamment du choix d'un Expert IA Ollama ; ce dernier ne remplace pas leur
+installation. NLLB est utilisé pour le dioula et le wolof. Le modèle baoulé est
+spécialisé français ↔ baoulé ; les autres directions passent par le français.
+Le dioula n'est pas remplacé par le bambara ; le baoulé n'est pas remplacé par l'akan.
+
+La reconnaissance audio directe d'une vidéo parlée en dioula, baoulé ou wolof
+n'est pas disponible. Le mode audio est refusé explicitement pour ces sources.
+Si la piste de sous-titres n'est pas accessible, il faut d'abord une transcription
+obtenue avec un outil compatible. Le modèle audio ne doit pas inventer le texte.
+
+Aucune nouvelle voix synthétique africaine n'est fournie. La traduction texte est
+disponible après installation du modèle ; la lecture nécessite une voix locale
+compatible avec la langue cible. Pour commencer, choisissez Fenêtre de traduction.
+Une voix française reste utilisable lorsque la cible est le français.
+
+Le modèle baoulé est surtout entraîné sur des textes bibliques et son auteur
+signale une qualité faible sur le langage quotidien. NLLB est un modèle de
+recherche. Les dialectes, tons, noms propres et cours techniques peuvent être
+mal traduits. Une validation par des locuteurs est nécessaire avant de présenter
+ces sorties comme des traductions fiables.
+
+MODÈLES, PROVENANCE ET LICENCES
+NLLB : https://huggingface.co/facebook/nllb-200-distilled-600M
+Révision f8d333a098d19b4fd9a8b18f94170487ad3f821d.
+Baoulé : https://huggingface.co/GaindeNdiaye/nllb-baoule-v1
+Révision 9acc31dd4b2b38f21017ca6b891cd59cda6059b5.
+Modèles CC-BY-NC-4.0 : usage non commercial, attribution des auteurs.
+La fiche d'origine est conservée dans chaque dossier sous MODEL_CARD.md.
+Les modèles et leurs dépendances de conversion ne sont pas inclus dans le ZIP.
+Conversion documentée : https://opennmt.net/CTranslate2/guides/transformers.html
+
+VALIDATION DE CETTE VERSION
+Les deux modèles ont été téléchargés, convertis et exécutés réellement sur CPU,
+puis testés via LocalEngine.translate_text avec les connexions sortantes bloquées.
+Chaque modèle int8 occupe environ 631 Mio sur l'environnement de test. Neuf
+phrases françaises ont été traduites, puis retraduites en français comme
+diagnostic. Certaines changent de sens : la rétrotraduction ne prouve pas la
+qualité et les essais révèlent des erreurs. Les résultats sont conservés dans
+docs/VALIDATION_LANGUES_AFRICAINES.json sur GitHub. Pas de validation humaine native
+ni d'essai complet Chrome/Edge sur Windows à ce stade.

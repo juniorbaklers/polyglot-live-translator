@@ -70,7 +70,7 @@ test('piste accessible : transmettre une seule fois le texte, refuser une vidéo
 
 test('réafficher la fenêtre masquée conserve les phrases et fonctionne avant le démarrage',async()=>{
  const {dom,receive,root}=setup();await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.20.0'});
+ assert.deepEqual(JSON.parse(JSON.stringify(receive({type:'overlay.ping'}))),{ok:true,version:'1.21.0'});
  receive({type:'overlay.subtitle',id:'x',revision:1,final:true,original:'Hello',translation:'Bonjour'});
  root.querySelector('[data-close]').click();const host=dom.window.document.getElementById('polyglot-live-subtitles');assert.equal(host.style.display,'none');
  assert.equal(receive({type:'overlay.reveal',active:true}).ok,true);assert.equal(host.style.display,'block');assert.equal(root.querySelectorAll('.phrase').length,1);
@@ -318,4 +318,17 @@ test('voix seule : masquer la fenêtre mais conserver les traductions dans l’h
  assert.equal(root.querySelector('.translation').textContent,'Bonjour');
  receive({type:'overlay.reveal'});await tick();
  assert.equal(root.querySelector('.translation').textContent,'Bonjour');dom.window.close();
+});
+
+test('sous-titres africains accessibles : dioula, baoulé et wolof transmis sans confusion',async()=>{
+ for(const code of ['dyu','bci','wol']){
+  const {dom,w,receive,messages}=setup('<body><video></video></body>');await tick();
+  const video=w.document.querySelector('video');
+  const track=new w.EventTarget();Object.assign(track,{kind:'subtitles',mode:'showing',language:code,activeCues:[{text:'Texte de test',startTime:4,endTime:7}]});
+  Object.defineProperty(video,'textTracks',{value:[track]});Object.defineProperty(video,'paused',{value:false});
+  assert.equal(receive({type:'captions.probe',sourceLanguage:code}).ok,true);
+  assert.equal(receive({type:'captions.start',sourceLanguage:code}).ok,true);await tick();
+  assert.equal(messages.find(m=>m.type==='caption.cue').cue.language,code);
+  receive({type:'captions.stop'});dom.window.close();
+ }
 });

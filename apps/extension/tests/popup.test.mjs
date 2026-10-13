@@ -69,3 +69,15 @@ test('glossaire malformé bloque le démarrage sans perdre les réglages existan
  assert.equal(sent.some(m=>m.type==='capture.start'),false);assert.ok(document.querySelector('#state').classList.contains('error'));
  dom.window.close();
 });
+
+test('dioula, baoulé, wolof : options source/cible et persistance',async()=>{
+ for(const code of ['dyu','bci','wol']){
+  const {dom,document,local}=await setup({sourceLanguage:'fr',targetLanguage:code});
+  assert.equal(document.querySelector('#target').value,code);
+  assert.ok(document.querySelector(`#source option[value="${code}"]`));
+  document.querySelector('#input-mode').value='captions';document.querySelector('#source').value=code;document.querySelector('#target').value='fr';
+  document.querySelector('#capture').click();await tick();
+  assert.equal(local.sourceLanguage,code);assert.equal(local.targetLanguage,'fr');assert.equal(local.inputMode,'captions');
+  dom.window.close();
+ }
+});

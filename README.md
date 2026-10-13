@@ -122,7 +122,7 @@ https://github.com/argosopentech/argos-translate.
 
 ## Extension 1.7.0 et DevOps
 
-Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v10).
+Le [guide d’installation](docs/INSTALLATION_EXTENSION.txt) décrit la mise à jour, les sous-titres accessibles, les glossaires par domaine, les corrections locales, les repères d’incertitude et les exports TXT/SRT. Le [guide DevOps](docs/DEVOPS.md) explique les tests Windows/Linux, la génération du ZIP dans GitHub Actions, les benchmarks réels et le retour à une version précédente. Les deux parties doivent être mises à jour ensemble (protocole local v11).
 
 La version 1.7.0 rend Démarrer et Afficher la fenêtre visibles avant les options avancées. Le code est enregistré au démarrage ; le bouton d’affichage réouvre le panneau sans perdre l’historique. Le contenu est ajouté à la page si nécessaire et les pages non compatibles sont signalées.
 
@@ -253,3 +253,13 @@ Le glossaire versionné fonctionne aussi avec Argos, dans toutes les directions 
 Piper est facultatif : `INSTALLER_VOIX.cmd` installe une voix pour la langue choisie. Les WAV sont joués hors de l’onglet capturé, avec repli sur une voix système locale. Une seule voix est chargée en mémoire ; lecture successive, vitesse réglable, dédoublonnage et file bornée avec alerte de retard. Les phrases non lues lors d’un débordement restent dans l’historique. L’arrêt annule la voix et rétablit l’audio original.
 
 Voir [mise à jour et activation](docs/MISE_A_JOUR_1_20.txt). Un WAV Piper français a été généré réellement sur CPU ; le routage Ollama et ses erreurs sont testés avec des doubles. Il reste à mesurer un modèle IA réel et à valider la lecture complète dans Chrome/Edge sur Windows. Cette version ne promet pas la qualité ni la synchronisation d’un doublage YouTube préparé.
+
+### Version 1.21 : dioula, baoulé et wolof (expérimental)
+
+Trois codes ISO explicites (`dyu`, `bci`, `wol`) sont disponibles comme source de sous-titres et comme cible de traduction. L’audio des quatre langues existantes peut être reconnu puis traduit vers ces langues. La reconnaissance audio directe des nouvelles langues est refusée, avec indication d’utiliser une piste de sous-titres accessible. Le glossaire, les corrections et les exports acceptent ces codes. Aucune voix africaine n’est fournie.
+
+`INSTALLER_LANGUES_AFRICAINES.cmd` utilise un environnement de conversion séparé `.venv-afrique`, sans modifier le moteur normal ou léger. Installation facultative de NLLB-600M pour dioula/wolof et du modèle spécialisé `GaindeNdiaye/nllb-baoule-v1` pour baoulé. Révisions épinglées, conversion CTranslate2 int8, validation réelle avant remplacement et copie des fiches des auteurs. Les poids de départ sont temporaires. Au fonctionnement : CPU, un modèle africain en mémoire, au plus quatre threads, aucune connexion distante. Les chemins baoulé utilisent le français comme pivot. Le choix d’un Expert Ollama ne remplace pas ces modèles spécialisés.
+
+La traduction reste expérimentale : le modèle baoulé est majoritairement biblique et son auteur signale des résultats faibles sur les phrases quotidiennes. Une validation par des locuteurs demeure nécessaire. Les modèles sont CC-BY-NC-4.0, destinés à un usage non commercial. Voir [activation et limites](docs/MISE_A_JOUR_1_21.txt).
+
+Validation 1.21 : conversion et inférence réelles des deux modèles sur CPU, neuf phrases via le moteur avec connexions sortantes bloquées. Les [résultats](docs/VALIDATION_LANGUES_AFRICAINES.json) incluent des rétrotraductions montrant des changements de sens ; ce diagnostic ne constitue pas une validation humaine. La mention expérimental reste nécessaire.

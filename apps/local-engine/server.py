@@ -10,13 +10,13 @@ import re
 from caption_buffer import CaptionBuffer
 from startup import single_instance
 from preferences import validate_preferences
-from languages import LANGUAGES
+from languages import LANGUAGES, AFRICAN_LANGUAGES
 from neural_voice import NeuralVoice
 from pathlib import Path
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v10"
+ENGINE_ID = "polyglot-local-free-v11"
 EXTENSION_ORIGIN = re.compile(r"chrome-extension://[a-p]{32}")
 MAX_AUDIO_BYTES = 2_000_000
 
@@ -66,12 +66,14 @@ class LocalService:
                         options = message.get("options", {})
                         source, target = options.get("sourceLanguage", "auto"), options.get("targetLanguage", "fr")
                         if source not in (LANGUAGES | {"auto"}) or target not in LANGUAGES:
-                            raise ValueError("Langues installées : anglais, français, espagnol, chinois simplifié")
-                        if hasattr(self.engine, "require_languages"):
-                            self.engine.require_languages(source, target)
+                            raise ValueError("Code de langue non pris en charge")
                         input_mode = options.get("inputMode", "audio")
                         if input_mode not in {"audio", "captions"}:
                             raise ValueError("Mode d’entrée invalide")
+                        if input_mode == "audio" and source in AFRICAN_LANGUAGES:
+                            raise ValueError("Dioula, baoulé et wolof en langue source : choisissez Sous-titres accessibles du lecteur. Reconnaissance audio non disponible.")
+                        if hasattr(self.engine, "require_languages"):
+                            self.engine.require_languages(source, target)
                         translate_drafts = options.get("translateDrafts", True)
                         if not isinstance(translate_drafts, bool):
                             raise ValueError("Mode de lecture invalide")

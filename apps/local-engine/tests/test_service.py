@@ -228,6 +228,21 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.service.voice.synthesize.assert_not_called()
 
 
+    async def test_african_source_uses_captions_and_audio_is_explicitly_refused(self):
+        for code in ("dyu","bci","wol"):
+            async with connect(self.url,origin="chrome-extension://"+"a"*32) as socket:
+                token=await self.pair(socket)
+                await self.send(socket,{"type":"session.start","token":token,"options":{"sourceLanguage":code,"targetLanguage":"fr","inputMode":"audio"}})
+                reply=await self.receive(socket)
+                self.assertEqual(reply["type"],"error");self.assertIn("Reconnaissance audio",reply["message"])
+                await self.send(socket,{"type":"session.start","token":token,"options":{"sourceLanguage":code,"targetLanguage":"fr","inputMode":"captions"}})
+                self.assertEqual((await self.receive(socket))["state"],"capturing")
+                await self.send(socket,{"type":"text.chunk","token":token,"text":"Texte test.","language":code,"start":0,"end":2})
+                reply=await self.receive(socket)
+                while reply["type"]!="audio.ack":reply=await self.receive(socket)
+                self.assertEqual(self.engine.calls[-1][1],code)
+
+
 class OfflineTests(unittest.TestCase):
     def test_outbound_network_is_blocked_but_localhost_works(self):
         code = """

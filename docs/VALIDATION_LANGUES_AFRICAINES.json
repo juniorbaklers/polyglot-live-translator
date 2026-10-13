@@ -1,0 +1,85 @@
+{
+  "version": "1.21.0",
+  "test": "Real CPU int8 inference through LocalEngine.translate_text with outbound network blocked",
+  "languages": [
+    "dyu",
+    "bci",
+    "wol"
+  ],
+  "human_validation": false,
+  "interpretation": "Back translation is a diagnostic, not proof of correctness. Some outputs change the meaning; experimental use only. Timing includes both directions and sometimes model loading.",
+  "samples": [
+    {
+      "source": "fr",
+      "target": "dyu",
+      "text": "Bonjour, comment allez-vous ?",
+      "translation": "I be cogo di?",
+      "back_translation": "Comment allez- vous?",
+      "seconds": 3.35
+    },
+    {
+      "source": "fr",
+      "target": "dyu",
+      "text": "Je vais au marché acheter du riz.",
+      "translation": "Ne bena taga lɔgɔfiyɛ la ka wari san.",
+      "back_translation": "Je vais acheter de l'argent au marché.",
+      "seconds": 0.74
+    },
+    {
+      "source": "fr",
+      "target": "dyu",
+      "text": "Nous avons trois enfants.",
+      "translation": "An ye deen saba sɔrɔ.",
+      "back_translation": "Nous avons eu trois enfants.",
+      "seconds": 0.42
+    },
+    {
+      "source": "fr",
+      "target": "bci",
+      "text": "Bonjour, comment allez-vous ?",
+      "translation": "Nya wãti.",
+      "back_translation": "Bonne journée.",
+      "seconds": 1.97
+    },
+    {
+      "source": "fr",
+      "target": "bci",
+      "text": "Je vais au marché acheter du riz.",
+      "translation": "N ́kɔ gua'n su ko to riz.",
+      "back_translation": "Je vais au marché acheter du riz.",
+      "seconds": 0.68
+    },
+    {
+      "source": "fr",
+      "target": "bci",
+      "text": "Nous avons trois enfants.",
+      "translation": "É le ba nsan.",
+      "back_translation": "Nous avons trois enfants.",
+      "seconds": 0.37
+    },
+    {
+      "source": "fr",
+      "target": "wol",
+      "text": "Bonjour, comment allez-vous ?",
+      "translation": "Bonjour, xaay nga?",
+      "back_translation": "Bonjour, vous êtes bien ?",
+      "seconds": 1.92
+    },
+    {
+      "source": "fr",
+      "target": "wol",
+      "text": "Je vais au marché acheter du riz.",
+      "translation": "Maa ngi dem ci xarekat, jënd riz.",
+      "back_translation": "Je vais à l'armée acheter du riz.",
+      "seconds": 0.72
+    },
+    {
+      "source": "fr",
+      "target": "wol",
+      "text": "Nous avons trois enfants.",
+      "translation": "Am nanu ñetti doom.",
+      "back_translation": "Nous avons trois enfants.",
+      "seconds": 0.49
+    }
+  ]
+}

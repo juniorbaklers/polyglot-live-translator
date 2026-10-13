@@ -5,7 +5,8 @@ import re
 import uuid
 from collections import OrderedDict
 from contextual_translation import contextual_translation
-from languages import LANGUAGES, BASE_PAIRS
+from languages import LANGUAGES, AUDIO_LANGUAGES, AFRICAN_LANGUAGES, BASE_PAIRS
+from african_translation import AfricanTranslator, AfricanTranslation
 from preferences import DOMAINS, normalized, validate_preferences
 from terminology import matching_terms, translate_with_terms
 from ai_experts import LocalExpert
@@ -109,6 +110,7 @@ class LocalEngine:
         print(f"Profil automatique : {profile.model}, {profile.threads} threads ; RAM disponible {memory}.", flush=True)
         vocabulary = ROOT / "VOCABULAIRE.txt"
         self.vocabulary = vocabulary.read_text(encoding="utf-8-sig").strip()[:600] if vocabulary.exists() else ""
+        self.african = AfricanTranslator(ROOT / "models" / "african")
         self.configure_session({})
         self.reset_session()
         self.languages = {item.code: item for item in self.translate_module.get_installed_languages()}
@@ -150,6 +152,16 @@ class LocalEngine:
         self.revision = 0
 
     def require_languages(self, source, target):
+        if source in AFRICAN_LANGUAGES or target in AFRICAN_LANGUAGES:
+            if not hasattr(self, "african"):
+                self.african = AfricanTranslator(ROOT / "models" / "african")
+            self.african.require_pair(source, target)
+            # Les étapes Argos du pivot français restent vérifiées.
+            from african_translation import translation_route
+            for backend, a, b in translation_route("fr" if source == "auto" else source, target):
+                if backend == "argos":
+                    self.require_languages(a, b)
+            return
         codes = {target} | ({source} if source != "auto" else set())
         if not codes <= self.languages.keys():
             raise ValueError("Modèle de langue manquant. Pour le chinois, relancez INSTALLER.cmd avec Internet, puis redémarrez le moteur.")
@@ -168,7 +180,14 @@ class LocalEngine:
         if language == target:
             return text
         model_text = translation_input(text, language, getattr(self, "session_domain", "general"))
-        translator = self.languages[language].get_translation(self.languages[target])
+        african_pair = language in AFRICAN_LANGUAGES or target in AFRICAN_LANGUAGES
+        if african_pair:
+            def classic(value, a, b):
+                hypotheses = self.languages[a].get_translation(self.languages[b]).hypotheses(value, num_hypotheses=1)
+                return hypotheses[0].value.strip() if hypotheses else ""
+            translator = AfricanTranslation(self.african, language, target, classic)
+        else:
+            translator = self.languages[language].get_translation(self.languages[target])
         matches = matching_terms(getattr(self, "terminology", []), model_text, language, target, getattr(self, "session_domain", "general"))
         key = (text.strip(), language, target, final)
         if key in self.translation_cache:
@@ -178,7 +197,7 @@ class LocalEngine:
             hypotheses = translator.hypotheses(value, num_hypotheses=1)
             return hypotheses[0].value.strip() if hypotheses else ""
         expert = getattr(self, "expert", None)
-        if final and expert:
+        if final and expert and not african_pair:
             value = expert.translate(model_text, language, target, self.session_domain, matches, self.translation_history)
             if expert.warning:
                 self.notices.append(expert.warning)
@@ -190,7 +209,7 @@ class LocalEngine:
             value = translate_with_terms(model_text, matches, plain)
             self.cache_translation(key, value)
             return value
-        if final and self.translation_history:
+        if final and self.translation_history and not african_pair:
             try:
                 contextual = contextual_translation(translator, model_text, self.translation_history)
             except (RuntimeError, ValueError, TypeError):
@@ -259,8 +278,10 @@ class LocalEngine:
     def process(self, audio: bytes, source: str, target: str):
         """Réévalue une fenêtre audio courte ; les mises à jour partagent un ID."""
         import numpy as np
-        if source not in LANGUAGES | {"auto"} or target not in LANGUAGES:
-            raise ValueError("Langues prises en charge : anglais, français, espagnol et chinois simplifié.")
+        if source in AFRICAN_LANGUAGES:
+            raise ValueError("Dioula, baoulé et wolof en langue source nécessitent les sous-titres accessibles du lecteur. La reconnaissance audio de ces langues n’est pas disponible.")
+        if source not in AUDIO_LANGUAGES | {"auto"} or target not in LANGUAGES:
+            raise ValueError("Langue audio source ou langue cible non prise en charge")
         self.require_languages(source, target)
         if source != self.last_source:
             self.reset_session()
@@ -294,7 +315,7 @@ class LocalEngine:
         segments = list(segments)
         original = " ".join(segment.text.strip() for segment in segments).strip()
         detected = info.language if language is None else language
-        if detected not in LANGUAGES:
+        if detected not in AUDIO_LANGUAGES:
             # Laisser une nouvelle chance au prochain extrait, avec plus de contexte.
             if duration >= 12:
                 self.window = None

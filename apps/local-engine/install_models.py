@@ -1,6 +1,6 @@
 """Installation initiale uniquement : télécharge les modèles libres nécessaires."""
 from pathlib import Path
-from languages import LANGUAGES, MODEL_PAIRS, SAMPLE_TEXTS
+from languages import AUDIO_LANGUAGES, MODEL_PAIRS, SAMPLE_TEXTS
 
 ROOT = Path(__file__).resolve().parent
 
@@ -38,7 +38,7 @@ def main():
     engine = LocalEngine()
     # Précharge aussi les détecteurs de phrases et les traductions par langue pivot.
     for source, text in SAMPLE_TEXTS.items():
-        for target in LANGUAGES - {source}:
+        for target in AUDIO_LANGUAGES - {source}:
             translator = engine.languages[source].get_translation(engine.languages[target])
             if translator is None:
                 raise RuntimeError(f"Traduction {source} → {target} non installée")
