@@ -17,7 +17,7 @@ from websockets.exceptions import ConnectionClosed
 
 HOST = "127.0.0.1"
 PORT = 47833  # Distinct du serveur Windows historique utilisant une API payante.
-ENGINE_ID = "polyglot-local-free-v11"
+ENGINE_ID = "polyglot-local-free-v12"
 EXTENSION_ORIGIN = re.compile(r"chrome-extension://[a-p]{32}")
 MAX_AUDIO_BYTES = 2_000_000
 
@@ -76,8 +76,10 @@ class LocalService:
                     if source not in (LANGUAGES | {"auto"}) or target not in LANGUAGES:
                         raise ValueError("Code de langue non pris en charge")
                     input_mode = options.get("inputMode", "audio")
-                    if input_mode not in {"audio", "captions"}:
+                    if input_mode not in {"audio", "captions", "page"}:
                         raise ValueError("Mode d’entrée invalide")
+                    if input_mode == "page" and source == "auto":
+                        raise ValueError("Choisissez la langue originale de la page")
                     if input_mode == "audio" and source in AFRICAN_LANGUAGES:
                         raise ValueError("Dioula, baoulé et wolof en langue source : choisissez Sous-titres accessibles du lecteur. Reconnaissance audio non disponible.")
                     if hasattr(self.engine, "require_languages"):
@@ -120,7 +122,7 @@ class LocalService:
                     self.voice_jobs.add(job)
                     job.add_done_callback(self.voice_jobs.discard)
                 elif kind == "session.stop":
-                    results = await asyncio.to_thread(captions.finish) if input_mode == "captions" else await asyncio.to_thread(self.engine.finish, target)
+                    results = [] if input_mode == "page" else (await asyncio.to_thread(captions.finish) if input_mode == "captions" else await asyncio.to_thread(self.engine.finish, target))
                     for result in results:
                         await send({"type": "subtitle", **result})
                     capturing = False
@@ -144,6 +146,21 @@ class LocalService:
                     await send({"type": "audio.ack", "sequence": message.get("sequence", 0),
                                 "processingMs": round((time.perf_counter() - started) * 1000),
                                     "queueMs": round((started - received_at) * 1000)})
+                elif kind == "page.chunk":
+                    if not capturing or input_mode != "page":
+                        raise ValueError("Session de page web requise")
+                    text = message.get("text")
+                    request_id = message.get("id")
+                    if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+                        raise ValueError("Texte de page vide ou trop long")
+                    if isinstance(request_id, bool) or not isinstance(request_id, int) or request_id < 0:
+                        raise ValueError("Identifiant de passage invalide")
+                    translate = getattr(self.engine, "translate_final_caption", None)
+                    value = await asyncio.to_thread(translate, text.strip(), source, target, False) if translate else await asyncio.to_thread(self.engine.translate_text, text.strip(), source, target)
+                    if not isinstance(value, str) or not value.strip():
+                        raise ValueError("Traduction vide : texte original conservé")
+                    notices = self.engine.take_notices() if hasattr(self.engine, "take_notices") else []
+                    await send({"type": "page.result", "id": request_id, "translation": value, "notices": notices})
                 elif kind == "text.chunk":
                     if not capturing or input_mode != "captions":
                         raise ValueError("Session de sous-titres requise")

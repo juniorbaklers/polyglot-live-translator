@@ -1,8 +1,8 @@
 import { generateStudyAid, normalizeAnswer } from "./study";
 (() => {
 const scope = globalThis as typeof globalThis & { __polyglotContentVersion?: string };
-if (scope.__polyglotContentVersion === "1.23.0") return;
-scope.__polyglotContentVersion = "1.23.0";
+if (scope.__polyglotContentVersion === "1.24.0") return;
+scope.__polyglotContentVersion = "1.24.0";
 // Fenêtre de transcription isolée des styles de la page vidéo.
 const ID = "polyglot-live-subtitles";
 let panel: HTMLElement | null = null;
@@ -335,7 +335,7 @@ function makeDraggable(element: HTMLElement, handle: HTMLElement) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.23.0"}); return; }
+  if (message.type === "overlay.ping") { sendResponse({ok: true, version: "1.24.0"}); return; }
   if (message.type === "overlay.reveal") {
     sessionActive = message.active === true;
     hiddenByUser = false; ensureOverlay(); panel!.style.display = "block";

@@ -1,6 +1,8 @@
 // Service worker central : coordonne le popup, la capture audio et les sous-titres.
 const OFFSCREEN_PATH = "offscreen.html";
 import { deliverTranslation, outputMode, stopSpeech } from "./output";
+let pageStarting = false;
+let captureStarting = false;
 
 interface ActiveCapture { tabId: number; outputMode: string; targetLanguage: string; stopping?: boolean; inputMode?: string; muteOriginal?: boolean; originalTabMuted?: boolean; voiceEngine?: string; voiceRate?: number; }
 
@@ -50,14 +52,65 @@ async function ensureContent(tabId: number) {
     catch { throw new Error("La fenêtre ne peut pas être ajoutée à cette page. Actualisez la vidéo et vérifiez l’accès de l’extension à ce site."); }
     response = await chrome.tabs.sendMessage(tabId, {type: "overlay.ping"});
   }
-  if (!response?.ok || response.version !== "1.23.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
+  if (!response?.ok || response.version !== "1.24.0") throw new Error("Actualisez la page vidéo pour charger la nouvelle fenêtre de traduction.");
 }
 
 // Oriente chaque message vers la capture, l'arrêt ou l'affichage correspondant.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === "page.closed" && _sender.url === chrome.runtime.getURL(OFFSCREEN_PATH)) {
+    (async () => {
+      if ((await chrome.storage.session.get("pageTabId")).pageTabId === message.tabId) await chrome.storage.session.remove("pageTabId");
+    })().catch(() => undefined);
+    return;
+  }
+  if (message.type === "page.translate" || message.type === "page.restore") {
+    (async () => {
+      if (_sender.tab) throw new Error("Action disponible depuis le panneau Polyglot");
+      const tab = await chrome.tabs.get(message.tabId);
+      if (!/^https?:\/\//.test(tab.url ?? "")) throw new Error("Cette page interne ne peut pas être traduite. Ouvrez une page web.");
+      if (message.type === "page.translate" && await activeCapture()) throw new Error("Arrêtez la traduction vidéo avant de traduire une page.");
+      await chrome.scripting.executeScript({target: {tabId: message.tabId}, files: ["page.js"]});
+      const languages = await chrome.storage.local.get(["sourceLanguage", "targetLanguage"]);
+      sendResponse(await chrome.tabs.sendMessage(message.tabId, {type: message.type, languageKey: JSON.stringify([languages.sourceLanguage ?? "auto", languages.targetLanguage ?? "fr"])}));
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
+    return true;
+  }
+  if (["page.start", "page.chunk", "page.stop"].includes(message.type)) {
+    (async () => {
+      const tabId = _sender.tab?.id;
+      if (tabId === undefined || _sender.frameId !== 0) throw new Error("Traduction réservée à la page principale");
+      if (message.type === "page.start") {
+        if (pageStarting || captureStarting) throw new Error("Une autre traduction est déjà en cours.");
+        pageStarting = true;
+        try {
+          if (await activeCapture()) throw new Error("Arrêtez la traduction vidéo avant de traduire une page.");
+          const active = (await chrome.storage.session.get("pageTabId")).pageTabId;
+          if (active !== undefined) throw new Error("Arrêtez la traduction de l’autre page avec Voir l’original.");
+          const settings = await chrome.storage.local.get(["sourceLanguage", "targetLanguage", "domain", "corrections", "terminology", "translationEngine", "expert", "aiModel", "expertPrompt"]);
+          const declared = String(message.language ?? "").toLowerCase().split("-")[0];
+          settings.sourceLanguage = settings.sourceLanguage === "auto" || !settings.sourceLanguage ? ({en: "en", fr: "fr", es: "es", zh: "zh", dyu: "dyu", bci: "bci", wol: "wol"} as Record<string,string>)[declared] : settings.sourceLanguage;
+          if (!settings.sourceLanguage) throw new Error("Choisissez la langue source de cette page dans le panneau Polyglot.");
+          if (settings.sourceLanguage === (settings.targetLanguage ?? "fr")) throw new Error("Choisissez une langue cible différente de la langue source.");
+          await ensureOffscreenDocument();
+          const result = await chrome.runtime.sendMessage({type: "offscreen.page.start", target: "offscreen", tabId, settings});
+          if (result?.ok) await chrome.storage.session.set({pageTabId: tabId});
+          sendResponse(result);
+        } finally { pageStarting = false; }
+      } else {
+        if ((await chrome.storage.session.get("pageTabId")).pageTabId !== tabId) { sendResponse({ok: false, error: "Session de page inactive"}); return; }
+        const result = await chrome.runtime.sendMessage({type: `offscreen.${message.type}`, target: "offscreen", tabId, text: message.text});
+        if (message.type === "page.stop" || !result?.ok) await chrome.storage.session.remove("pageTabId");
+        sendResponse(result);
+      }
+    })().catch(error => sendResponse({ok: false, error: String(error)}));
+    return true;
+  }
   if (message.type === "capture.start") {
+    if (captureStarting || pageStarting) { sendResponse({ok: false, error: "Une autre traduction démarre déjà."}); return; }
+    captureStarting = true;
     let started = false;
     (async () => {
+      if (pageStarting || (await chrome.storage.session.get("pageTabId")).pageTabId !== undefined) throw new Error("Arrêtez la traduction de page avant de traduire une vidéo.");
       if (await activeCapture()) throw new Error("Arrêtez la capture actuelle avant d’en démarrer une autre.");
       await ensureContent(message.tabId);
       await ensureOffscreenDocument();
@@ -103,7 +156,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       await chrome.tabs.sendMessage(message.tabId, {type: "overlay.error", text: String(error)}).catch(() => undefined);
       sendResponse({ ok: false, error: String(error) });
-    });
+    }).finally(() => { captureStarting = false; });
     return true;
   }
   if (message.type === "overlay.reveal") {
@@ -234,3 +287,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 });
+async function closePageTab(tabId: number) {
+  if ((await chrome.storage.session.get("pageTabId")).pageTabId !== tabId) return;
+  await chrome.runtime.sendMessage({type: "offscreen.page.stop", target: "offscreen", tabId}).catch(() => undefined);
+  await chrome.storage.session.remove("pageTabId");
+}
+chrome.tabs.onRemoved.addListener(tabId => { void closePageTab(tabId); });
+chrome.tabs.onUpdated.addListener((tabId, change) => { if (change.status === "loading") void closePageTab(tabId); });

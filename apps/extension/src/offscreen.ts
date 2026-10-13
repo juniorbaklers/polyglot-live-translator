@@ -1,6 +1,7 @@
+import "./page_client.ts";
 // Capture réelle vers le moteur local gratuit uniquement.
 const LOCAL_WS_URL = "ws://127.0.0.1:47833";
-const FREE_ENGINE_ID = "polyglot-local-free-v11";
+const FREE_ENGINE_ID = "polyglot-local-free-v12";
 let socket: WebSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let stream: MediaStream | null = null;

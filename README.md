@@ -1,3 +1,13 @@
+## Polyglot 1.24 : traduction locale des pages web
+
+Le bouton **Traduire la page web** traduit les textes du document principal avec le moteur local existant, le glossaire et les experts sélectionnés. **Voir la page originale** arrête le travail et restaure les textes qui n'ont pas été modifiés depuis par le site. Aucun son n'est capturé et aucune API payante n'est ajoutée.
+
+Choisissez les langues dans le panneau. Le mode automatique utilise `document.documentElement.lang` ; si cette valeur est absente ou non prise en charge, choisissez explicitement la langue source. Une seule page ou vidéo utilise le moteur à la fois. Les pages protégées, PDF, iframes, shadow DOM, images et canvas sont exclus. Les champs, zones éditables, code, boutons et éléments `translate=no` restent originaux. Les traductions sont affectées à `Text.data`, jamais injectées comme HTML ; liens et événements DOM restent en place.
+
+Une seule requête locale est traitée à la fois, au maximum 500 nœuds par lancement et 4000 caractères par nœud. Les nœuds ajoutés ensuite peuvent être traduits en relançant le bouton. Les phrases réparties entre balises sont traduites par fragments, avec les limites de cohérence que cela implique. Les erreurs laissent les passages restants originaux et la restauration reste disponible.
+
+Moteur et extension doivent être mis à jour ensemble (protocole v12). Guide : `docs/MISE_A_JOUR_1_24.txt`. Aucun nouveau modèle ou dépendance requis pour cette mise à jour. Les modèles africains restent facultatifs et expérimentaux ; leur conversion et ses besoins mémoire ne changent pas. La validation native Windows et la qualité linguistique sur pages réelles restent à faire.
+
 # Polyglot Live Translator — extension réelle en mode local gratuit
 
 Cette version de l’extension capture le son d’un onglet Chrome/Edge, transcrit

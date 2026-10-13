@@ -42,6 +42,34 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response["engine"], ENGINE_ID)
         return response["token"]
 
+    async def test_page_text_uses_real_socket_and_never_audio(self):
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type": "session.start", "token": token, "options": {"sourceLanguage": "en", "targetLanguage": "fr", "inputMode": "page"}})
+            self.assertEqual((await self.receive(socket))["state"], "capturing")
+            for text, ident in [("Hello world.", 1), ("<script>example</script>", 2)]:
+                await self.send(socket, {"type": "page.chunk", "token": token, "id": ident, "text": text})
+                response = await self.receive(socket)
+                self.assertEqual(response["type"], "page.result")
+                self.assertEqual(response["id"], ident)
+                self.assertEqual(response["translation"], "Traduit : " + text)
+            await self.send(socket, {"type": "page.chunk", "token": token, "id": 3, "text": "a" * 4001})
+            self.assertEqual((await self.receive(socket))["type"], "error")
+            self.assertEqual(len(self.engine.calls), 2)
+            await self.send(socket, {"type": "session.stop", "token": token})
+            self.assertEqual((await self.receive(socket))["state"], "stopped")
+
+    async def test_page_requires_explicit_source_and_rejects_page_text_in_audio(self):
+        async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
+            token = await self.pair(socket)
+            await self.send(socket, {"type": "session.start", "token": token, "options": {"inputMode": "page"}})
+            self.assertEqual((await self.receive(socket))["type"], "error")
+            await self.send(socket, {"type": "session.start", "token": token, "options": {"sourceLanguage": "en"}})
+            await self.receive(socket)
+            await self.send(socket, {"type": "page.chunk", "token": token, "id": 1, "text": "Hello"})
+            self.assertEqual((await self.receive(socket))["type"], "error")
+            self.assertEqual(self.engine.calls, [])
+
     async def test_real_socket_transports_audio_to_engine_and_returns_result(self):
         async with connect(self.url, origin="chrome-extension://" + "a" * 32) as socket:
             token = await self.pair(socket)

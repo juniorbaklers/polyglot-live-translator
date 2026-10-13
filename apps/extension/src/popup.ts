@@ -220,3 +220,22 @@ document.querySelector<HTMLButtonElement>("#builtin-terms")!.onclick = () => {
     terminology.value = JSON.stringify(value, null, 2); refreshTermCount(); showState("Termes IA ajoutés dans les 12 directions entre les quatre langues. Enregistrez les réglages.");
   } catch (error) { showState(String(error), true); }
 };
+
+for (const [id, type] of [["translate-page", "page.translate"], ["restore-page", "page.restore"]]) {
+  const button = document.querySelector<HTMLButtonElement>(`#${id}`)!;
+  button.onclick = async () => {
+    button.disabled = true;
+    try {
+      if (type === "page.translate") {
+        if (capturing) throw new Error("Arrêtez la traduction vidéo avant de traduire une page.");
+        await chrome.storage.local.set({sourceLanguage: source.value, targetLanguage: target.value, domain: domain.value, ...advancedSettings()});
+      }
+      const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+      if (tab?.id === undefined) throw new Error("Onglet introuvable.");
+      const response = await chrome.runtime.sendMessage({type, tabId: tab.id});
+      if (!response?.ok) throw new Error(response?.error ?? "Action indisponible");
+      showState(type === "page.translate" ? "Traduction lancée. Suivez sa progression sur la page." : "Texte original demandé.");
+    } catch (error) { showState(String(error).replace(/^Error: /, ""), true); }
+    finally { button.disabled = false; }
+  };
+}
