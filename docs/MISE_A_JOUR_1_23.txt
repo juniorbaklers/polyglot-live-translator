@@ -1,0 +1,73 @@
+POLYGLOT 1.23.0 — PRECISION, LECTURE ET INSTALLATION
+
+DEMARRAGE SIMPLE SUR WINDOWS
+1. Décompressez toute l'archive, puis double-cliquez INSTALLER_POLYGLOT.vbs.
+   Python 3.11 64 bits avec son lanceur est requis. Si absent, le programme
+   affiche une explication et ouvre le site officiel de Python.
+2. Déjà installé ? Choisissez votre dossier actuel (celui qui contient
+   moteur-local et extension). Vous pouvez aussi sélectionner moteur-local.
+   Une installation neuve est proposée dans LocalAppData/PolyglotLive.
+3. Arrêtez la traduction dans l'extension et exportez votre session.
+   Le bouton « Arrêter le moteur du dossier choisi » permet de fermer
+   uniquement les processus Polyglot de ce dossier, sans saisir de commande.
+4. Cliquez « Installer / mettre à jour ». Les modèles, environnements Python
+   et votre VOCABULAIRE.txt personnalisé sont conservés. Une installation
+   neuve utilise le moteur léger ; une mise à jour garde .venv si présent.
+   Internet et un téléchargement des modèles sont nécessaires à la première
+   installation ; pas de nouvelle bibliothèque requise pour cette mise à jour.
+5. Laissez coché le démarrage automatique si vous le souhaitez. Un raccourci
+   DEMARRER_POLYGLOT.lnk reste également dans le dossier installé.
+6. Chrome ou Edge : ouvrez chrome://extensions ou edge://extensions.
+   Activez le mode développeur puis « Charger l'extension non empaquetée »
+   et choisissez le dossier extension indiqué. S'il est déjà chargé depuis
+   ce même dossier, cliquez simplement sur Recharger puis actualisez la vidéo.
+   Cette étape navigateur est manuelle ; l'installateur ne la contourne pas.
+
+Les fichiers de l'interface d'installation sont copiés dans le dossier installé.
+Après une installation réussie dans un autre dossier, vous pouvez supprimer
+la copie décompressée de téléchargement. Ne supprimez pas le dossier installé.
+Le programme refuse de mettre à jour un moteur encore lancé. Il ne ferme
+pas un autre programme Python ni un moteur d'un dossier différent.
+
+PRECISION
+- Les réponses de l'expert Ollama qui modifient les chiffres écrits ou semblent
+  perdre une négation connue sont refusées, avec repli sur le traducteur classique.
+- Les contrôles peuvent rejeter une traduction pourtant correcte (paraphrase,
+  nombres écrits en lettres, séparateurs de milliers). Ils ne vérifient pas
+  complètement le sens, les omissions, les unités ou les noms propres.
+- Si le glossaire ne peut pas être imposé, le moteur garde une traduction
+  de phrase entière avec contexte, plutôt qu'assembler des fragments séparés.
+  Les termes non respectés et certains écarts factuels déclenchent un avis
+  « Traduction à relire ». L'absence d'alerte ne garantit pas la précision.
+- Le contexte est disponible sur les routes directes compatibles. Les langues
+  africaines gardent leur statut expérimental et leurs limites audio/voix.
+
+LECTURE
+- Chaque phrase finalisée est sauvegardée dans ce navigateur pendant la session.
+- Après rechargement, ouvrez la fenêtre puis « Dernière session » lorsque
+  la traduction est arrêtée, pour relire et exporter la sauvegarde.
+- Une seule dernière session est conservée. Les brouillons en cours ne sont pas
+  sauvegardés ; exportez les sessions que vous souhaitez conserver durablement.
+- Les boutons s'adaptent mieux à une fenêtre compacte et l'historique peut
+  recevoir le focus pour utiliser les touches de défilement.
+
+VALIDATION SUR VOTRE ORDINATEUR
+1. Gardez le moteur lancé mais arrêtez la traduction dans l'extension.
+2. Dans l'interface d'installation, cliquez « Tester le moteur et ouvrir le rapport ».
+3. Choisissez Traduction classique ou Expert IA local (Ollama installé).
+   Huit textes de contrôle sont transmis au moteur actuellement lancé.
+   Les replis de l’expert sont indiqués dans les alertes du rapport.
+   Le rapport HTML/JSON contient ses traductions, temps de réponse et alertes.
+4. Relisez les phrases en vérifiant les indications du rapport. Une absence
+   d'alerte n'est pas une validation humaine. Vous pouvez partager le rapport.
+5. Pour la reconnaissance audio, benchmark.py reste disponible avec un extrait
+   audio réel et une transcription humaine de référence. Ce test est distinct
+   du test de traduction de texte et du confort d'utilisation sur vidéo.
+
+VERIFICATIONS EFFECTUEES ICI
+119 tests Python réussis, un test Windows ignoré sous Linux ; 62 tests extension.
+Compilation TypeScript/Vite et archive vérifiées. Les tests de protocole utilisent
+des calculs contrôlés ; aucun résultat IA fictif n'est fourni dans le produit.
+Les sorties de vos modèles, la latence vidéo et l'installation Windows réelle
+restent à vérifier sur votre ordinateur. Aucune précision chiffrée n'est promise.
+Les corrections de fluidité 1.22 sont conservées ; protocole local v11.

@@ -5,6 +5,7 @@ import re
 import uuid
 from collections import OrderedDict
 from contextual_translation import contextual_translation
+from translation_checks import translation_issues
 from languages import LANGUAGES, AUDIO_LANGUAGES, AFRICAN_LANGUAGES, BASE_PAIRS
 from african_translation import AfricanTranslator, AfricanTranslation
 from preferences import DOMAINS, normalized, validate_preferences
@@ -189,11 +190,18 @@ class LocalEngine:
         else:
             translator = self.languages[language].get_translation(self.languages[target])
         matches = matching_terms(getattr(self, "terminology", []), model_text, language, target, getattr(self, "session_domain", "general"))
-        key = (text.strip(), language, target, final)
+        key = (text.strip(), language, target, final, tuple(self.translation_history) if final else ())
         if key in self.translation_cache:
             self.translation_cache.move_to_end(key)
             return self.translation_cache[key]
         def plain(value):
+            if final and self.translation_history and not african_pair:
+                try:
+                    contextual = contextual_translation(translator, value, self.translation_history)
+                    if contextual:
+                        return contextual
+                except (RuntimeError, ValueError, TypeError):
+                    pass
             hypotheses = translator.hypotheses(value, num_hypotheses=1)
             return hypotheses[0].value.strip() if hypotheses else ""
         expert = getattr(self, "expert", None)
@@ -216,6 +224,7 @@ class LocalEngine:
                 # Une reprise contextuelle ne doit pas interrompre la capture.
                 contextual = None
             if contextual:
+                self.cache_translation(key, contextual)
                 return contextual
         hypotheses = translator.hypotheses(model_text, num_hypotheses=1)
         value = hypotheses[0].value.strip() if hypotheses else ""
@@ -225,6 +234,14 @@ class LocalEngine:
 
     def cache_translation(self, key, value):
         if value:
+            if key[3]:
+                issues = translation_issues(key[0], value, key[1], key[2])
+                matches = matching_terms(getattr(self, 'terminology', []), key[0], key[1], key[2], getattr(self, 'session_domain', 'general'))
+                if any(item['translation'] not in value for _, _, item in matches):
+                    issues.append('terminology')
+                if issues:
+                    labels = {'numbers': 'chiffres', 'negation': 'négation', 'terminology': 'termes du glossaire', 'empty': 'texte absent'}
+                    self.notices.append('Traduction à relire : vérifiez ' + ', '.join(labels[item] for item in issues) + '. Ces contrôles ne garantissent pas le sens.')
             self.translation_cache[key] = value
             if len(self.translation_cache) > 64:
                 self.translation_cache.popitem(last=False)

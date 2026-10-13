@@ -3,6 +3,7 @@ import json
 import http.client
 import time
 from resources import detect_resources, GIB
+from translation_checks import translation_issues
 
 EXPERTS = {
     "general": "Translate accurately and naturally, preserving meaning, names, numbers and uncertainty.",
@@ -97,6 +98,9 @@ class LocalExpert:
             value = json.loads(result["message"]["content"])["translation"]
             if not isinstance(value, str) or not value.strip() or len(value) > 12000:
                 raise ValueError("réponse IA invalide")
+            issues = translation_issues(text, value, source, target)
+            if issues:
+                raise ValueError("contrôle de traduction : " + ', '.join(issues))
             if any(item["translation"] not in value for _, _, item in terms):
                 raise ValueError("termes du glossaire non respectés")
             return value.strip()

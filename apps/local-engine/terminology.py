@@ -49,10 +49,9 @@ def matching_terms(entries, text, source, target, domain):
 
 
 def translate_with_terms(text, matches, translate):
-    """Essayer les marqueurs, puis fragments si le modèle modifie les marqueurs.
+    """Essayer les marqueurs, puis conserver une traduction de phrase entière.
 
-    Le second chemin privilégie les termes exacts au naturel de la phrase.
-    Aucun remplacement aveugle dans le texte traduit.
+    Aucun remplacement aveugle ni assemblage de fragments indépendants.
     """
     markers = [f"ZXQTERM{index}QXZ" for index in range(len(matches))]
     if any(marker in text for marker in markers):
@@ -67,17 +66,7 @@ def translate_with_terms(text, matches, translate):
             for marker, (_, _, item) in zip(markers, matches):
                 result = result.replace(marker, item["translation"])
             return result
-    pieces, position = [], 0
-    for start, end, item in matches:
-        fragment = text[position:start]
-        if fragment.strip():
-            pieces.append((" " if fragment[:1].isspace() else "") + translate(fragment.strip()) + (" " if fragment[-1:].isspace() else ""))
-        else:
-            pieces.append(fragment)
-        pieces.append(item["translation"]); position = end
-    fragment = text[position:]
-    if fragment.strip():
-        pieces.append((" " if fragment[:1].isspace() else "") + translate(fragment.strip()))
-    else:
-        pieces.append(fragment)
-    return "".join(pieces).strip()
+    # Garder la phrase entière : traduire séparément chaque fragment peut
+    # détruire ses accords et ses liens logiques. Le moteur signale ensuite
+    # les termes non respectés au lieu de fabriquer une phrase assemblée.
+    return translate(text)

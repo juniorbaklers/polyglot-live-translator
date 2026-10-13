@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE_FILES = ["african_translation.py", "install_african_models.py", "INSTALLER_LANGUES_AFRICAINES.cmd", "terminology.py", "ai_experts.py", "neural_voice.py", "install_voice.py", "INSTALLER_VOIX.cmd", "local_translate.py", "verification_legere.py", "requirements-leger.txt", "INSTALLER_LEGER.cmd", "DEMARRER_LEGER.cmd", "DIAGNOSTIC_ESPACE.cmd", "diagnostic_espace.py", "languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
+ENGINE_FILES = ["translation_checks.py", "validate_translation.py", "validation_cases.json", "african_translation.py", "install_african_models.py", "INSTALLER_LANGUES_AFRICAINES.cmd", "terminology.py", "ai_experts.py", "neural_voice.py", "install_voice.py", "INSTALLER_VOIX.cmd", "local_translate.py", "verification_legere.py", "requirements-leger.txt", "INSTALLER_LEGER.cmd", "DEMARRER_LEGER.cmd", "DIAGNOSTIC_ESPACE.cmd", "diagnostic_espace.py", "languages.py", "contextual_translation.py", "resources.py", "startup.py", "launcher.py", "auto_start.py", "ACTIVER_DEMARRAGE_AUTO.cmd", "ACTIVER_DEMARRAGE_AUTO_PRECISION.cmd", "DESACTIVER_DEMARRAGE_AUTO.cmd", "engine.py", "server.py", "caption_buffer.py", "preferences.py", "offline_guard.py", "benchmark.py", "requirements.txt", "install_models.py", "install_precision.py", "INSTALLER.cmd", "INSTALLER_PRECISION.cmd", "DEMARRER.cmd", "DEMARRER_PRECISION.cmd", "VOCABULAIRE.txt"]
 
 
 def package(output, extension_only=False):
@@ -22,10 +22,13 @@ def package(output, extension_only=False):
         raise ValueError("Versions moteur/extension incompatibles")
     entries = [(f"extension/{path.relative_to(dist).as_posix()}", path) for path in dist.rglob('*') if path.is_file()]
     if extension_only:
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_22.txt"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_23.txt"), ("LICENSE", ROOT / "LICENSE")]
     else:
         entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_22.txt"), ("INSTALLATION_COMPLETE.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_23.txt"), ("INSTALLATION_COMPLETE.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+    if not extension_only:
+        entries += [("INSTALLER_POLYGLOT.vbs", ROOT / "scripts/INSTALLER_POLYGLOT.vbs"),
+                    ("installation/windows_installer.py", ROOT / "scripts/windows_installer.py")]
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(entries):
@@ -38,7 +41,7 @@ def package(output, extension_only=False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Chinois_V18.zip')
+    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Complet_1_23.zip')
     parser.add_argument("--extension-only", action="store_true")
     args = parser.parse_args()
     package(args.output, args.extension_only)
