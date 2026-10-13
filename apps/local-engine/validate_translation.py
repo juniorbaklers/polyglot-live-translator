@@ -39,7 +39,7 @@ async def validate(cases, url='ws://127.0.0.1:47833', engine='classic'):
         async def receive(): return json.loads(await asyncio.wait_for(socket.recv(), 120))
         await send({'type':'pair.request','extensionId':'a' * 32})
         paired = await receive()
-        if paired.get('type') != 'pair.accepted' or paired.get('engine') != 'polyglot-local-free-v11':
+        if paired.get('type') != 'pair.accepted' or paired.get('engine') != 'polyglot-local-free-v12':
             raise RuntimeError('Moteur incompatible ou occupé. Arrêtez la traduction dans l’extension avant ce test.')
         token = paired['token']
         for index, case in enumerate(cases):

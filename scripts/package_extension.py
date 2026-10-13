@@ -14,18 +14,18 @@ def package(output, extension_only=False):
     manifest = json.loads((dist / "manifest.json").read_text())
     if manifest['version'] != json.loads((ROOT / "apps/extension/public/manifest.json").read_text())['version']:
         raise ValueError("Recompilez l’extension avant de créer l’archive")
-    for filename in ("background.js", "offscreen.js", "content.js", "popup.js", "popup.html", "offscreen.html"):
+    for filename in ("background.js", "offscreen.js", "content.js", "page.js", "popup.js", "popup.html", "offscreen.html"):
         if not (dist / filename).is_file():
             raise ValueError(f"Fichier compilé manquant : {filename}")
-    protocol = "polyglot-local-free-v11"
+    protocol = "polyglot-local-free-v12"
     if protocol not in (dist / "offscreen.js").read_text() or protocol not in (ROOT / "apps/local-engine/server.py").read_text():
         raise ValueError("Versions moteur/extension incompatibles")
     entries = [(f"extension/{path.relative_to(dist).as_posix()}", path) for path in dist.rglob('*') if path.is_file()]
     if extension_only:
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_23.txt"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_24.txt"), ("LICENSE", ROOT / "LICENSE")]
     else:
         entries += [(f"moteur-local/{name}", ROOT / "apps/local-engine" / name) for name in ENGINE_FILES]
-        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_23.txt"), ("INSTALLATION_COMPLETE.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
+        entries += [("INSTALLATION.txt", ROOT / "docs/MISE_A_JOUR_1_24.txt"), ("INSTALLATION_COMPLETE.txt", ROOT / "docs/INSTALLATION_EXTENSION.txt"), ("DEVOPS.md", ROOT / "docs/DEVOPS.md"), ("LICENSE", ROOT / "LICENSE")]
     if not extension_only:
         entries += [("INSTALLER_POLYGLOT.vbs", ROOT / "scripts/INSTALLER_POLYGLOT.vbs"),
                     ("installation/windows_installer.py", ROOT / "scripts/windows_installer.py")]
@@ -41,7 +41,7 @@ def package(output, extension_only=False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Complet_1_23.zip')
+    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/Polyglot_Complet_1_24.zip')
     parser.add_argument("--extension-only", action="store_true")
     args = parser.parse_args()
     package(args.output, args.extension_only)

@@ -1,0 +1,44 @@
+POLYGLOT 1.24.0 — TRADUCTION DES PAGES WEB
+
+MISE A JOUR
+1. Décompressez toute l'archive et ouvrez INSTALLER_POLYGLOT.vbs.
+2. Choisissez votre dossier actuel, par exemple Polyglot_Sans_Code_V14.
+3. Arrêtez la traduction puis utilisez « Arrêter le moteur du dossier choisi ».
+4. Cliquez « Installer / mettre à jour ». Vos modèles et VOCABULAIRE sont conservés.
+5. Rechargez l'extension dans chrome://extensions ou edge://extensions, puis
+   actualisez la page web. Moteur ET extension doivent être mis à jour.
+   Python 3.11 64 bits requis ; aucune nouvelle dépendance ou modèle pour
+   cette mise à jour d'une installation fonctionnelle.
+
+TRADUIRE UNE PAGE
+1. Ouvrez une page web et cliquez sur l'icône Polyglot.
+2. Choisissez la langue source et la langue cible. Automatique utilise la
+   langue déclarée par la page ; si absente/non prise en charge, choisissez-la.
+3. Cliquez « Traduire la page web ». La progression apparaît sur la page.
+4. Cliquez « Voir l'original / arrêter » sur la page ou « Voir la page originale »
+   dans Polyglot pour arrêter et rétablir les textes non modifiés par le site.
+5. Pour des textes chargés ensuite ou une page de plus de 500 passages,
+   cliquez à nouveau « Traduire la page web ».
+
+La traduction utilise votre moteur local, son glossaire et ses experts configurés.
+Aucune API payante. Une seule page ou vidéo est traduite à la fois : arrêtez
+l'autre traduction avant de commencer. Masquer le panneau n'arrête pas le travail.
+Le moteur local doit être lancé. Les langues africaines nécessitent toujours
+leurs modèles installés ; cette version ne résout pas la conversion exigeant
+5 Go de RAM disponible. Aucun modèle africain n'est téléchargé par ce bouton.
+
+LIMITES
+- Texte du document principal seulement : pas les PDF, images, canvas, iframes,
+  composants en shadow DOM ni pages internes protégées Chrome/Edge.
+- Champs de saisie, boutons, zones éditables, code et textes marqués « ne pas
+  traduire » sont préservés. Liens et structure HTML restent en place.
+- Traduction par nœud de texte, avec le contexte précédent : une phrase coupée
+  par plusieurs liens ou balises peut être moins naturelle. Vérifiez les textes.
+- Un passage de plus de 4000 caractères reste original. Les sites modifiant
+  souvent leur contenu peuvent remplacer une traduction ; relancez au besoin.
+- 500 passages maximum par lancement, une seule requête à la fois.
+- Une navigation ou actualisation rétablit la page fournie par le site.
+- Tests automatisés DOM/protocole effectués ; validation sur votre Windows
+  et des pages réelles nécessaire avant distribution publique.
+
+Les fonctions vidéo de la version 1.23 sont conservées.
